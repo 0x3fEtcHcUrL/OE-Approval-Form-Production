@@ -105,7 +105,7 @@ function showErrorTokenPage(title, message) {
       <body class="bg-light d-flex align-items-center justify-content-center vh-100">
         <div class="card shadow-lg" style="max-width: 500px;">
           <div class="card-body text-center">
-            <h3 class="text-danger mb-3">?? ${title}</h3>
+            <h3 class="text-danger mb-3">⚠️ ${title}</h3>
             <p class="text-muted">${message}</p>
             <hr>
             <a href="${ScriptApp.getService().getUrl()}" class="btn btn-primary mt-3">Return to Form</a>
@@ -152,7 +152,7 @@ function doGet(e) {
 
     const rejectionHtml = `
       <div style="font-family: Arial, sans-serif; color: #333;">
-        <h3 style="color: #dc3545;">? Leave Request Rejected - ${name}</h3>
+        <h3 style="color: #dc3545;">❌ Leave Request Rejected - ${name}</h3>
         <p><strong>Requester:</strong> ${name}</p>
         <p><strong>Department:</strong> ${department}</p>
         <p><strong>Leave Type:</strong> ${leaveType}</p>
@@ -218,7 +218,7 @@ function doGet(e) {
 
   //   const rejectionHtml = `
   //     <div style="font-family: Arial, sans-serif; color: #333;">
-  //       <h3 style="color: #dc3545;">? Leave Request Rejected - ${name}</h3>
+  //       <h3 style="color: #dc3545;">❌ Leave Request Rejected - ${name}</h3>
   //       <p><strong>Requester:</strong> ${name}</p>
   //       <p><strong>Department:</strong> ${department}</p>
   //       <p><strong>Leave Type:</strong> ${leaveType}</p>
@@ -409,11 +409,11 @@ function doGet(e) {
               // Best Use Cases Logic!
               // | **Submitter** | **Expected Approval Flow**            | **Expected Reject Flow**   | **Acc Flow** | **Reject Flow** |
               // | ------------- | ------------------------------------- | -------------------------- | ------------ | --------------- |
-              // | Employee      | SPV  HR  Reporting (V)              | Rejected at the stage of   | Done         | Done            |
-              // | SPV           | HR  GM  Reporting (V)               | ~~                         | Done         | Done            |
-              // | HR            | GM  Reporting (V)                    |   ~~                       | Done         | Done            | 
-              // | GM            | HR  Reporting (V)                    |     ~~                     | Done         | Done            |
-              // | Unpaid Leave  | SPV(V)  HR(V)  GM(V)  Reporting (V)|       ~~                   | Done         | Done            | GM Unpaid needs to fix!
+              // | Employee      | SPV → HR → Reporting (V)              | Rejected at the stage of   | Done         | Done            |
+              // | SPV           | HR → GM → Reporting (V)               | ~~                         | Done         | Done            |
+              // | HR            | GM → Reporting (V)                    |   ~~                       | Done         | Done            | 
+              // | GM            | HR → Reporting (V)                    |     ~~                     | Done         | Done            |
+              // | Unpaid Leave  | SPV(V) → HR(V) → GM(V) → Reporting (V)|       ~~                   | Done         | Done            | GM Unpaid needs to fix!
               // | WFH           | Emp -> SPV(V), SPV -> HR(V), HR -> GM(V), GM -> HR(V) |            | Done         | Done            |
               //
               //
@@ -443,14 +443,14 @@ function doGet(e) {
 
               if (leaveType === "Working From Home (WFH)") {
                 if (isRequesterHR) {
-                  // WFH: HR submitted  GM next
+                  // WFH: HR submitted → GM next
                   nextStage = "GM Review";
                     sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
                     const gmToken = generateRandomToken();
                     sheet.getRange(rowIndex, COLUMNS.GM_TOKEN).setValue(gmToken);
                     sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.GM_EMAIL, nextStage, rowIndex, gmToken);
                 } else {
-                  // WFH: SPV submitted  HR  Reporting
+                  // WFH: SPV submitted → HR → Reporting
                   finalizeRequest(rowIndex, decision, note, name, requester, "Approved by HR");
                 }
               } else {
@@ -471,7 +471,7 @@ function doGet(e) {
             case "GM Review":
               //const isRequesterHR = requester === CONFIG.HR_EMAIL;
               if (leaveType === "Working From Home (WFH)") {
-                // WFH: HR submitted  GM  Reporting
+                // WFH: HR submitted → GM → Reporting
                 finalizeRequest(rowIndex, decision, note, name, requester, "Approved by GM");
               } else {
                 nextStage = "Final";
@@ -498,7 +498,7 @@ function doGet(e) {
 
           const rejectionHtml = `
             <div style="font-family: Arial, sans-serif; color: #333;">
-              <h3 style="color: #dc3545;">? Leave/WFH Request Rejected - ${name}</h3>
+              <h3 style="color: #dc3545;">❌ Leave/WFH Request Rejected - ${name}</h3>
               <p><strong>Requester:</strong> ${name}</p>
               <p><strong>Department:</strong> ${department}</p>
               <p><strong>Leave Type:</strong> ${leaveType}</p>
@@ -543,16 +543,57 @@ function doGet(e) {
     return html.evaluate().setTitle("Request Processed");
 
   } catch (err) {
-    Logger.log("Error in doGet: " + err.toString() + "\nStack: " + err.stack);
-    // Return a user-friendly error page
-    let errorHtml = '<h1>Oops! Something went wrong.</h1>';
-    errorHtml += '<p>We encountered an error while processing your request. This could be due to the request being outdated, already processed, or a temporary issue.</p>';
-    errorHtml += '<p>Please try again later or contact support if the problem persists.</p>';
-    errorHtml += '<h1><small>Error details (for support): ' + escapeHtml(err.toString()) + '</small></h1>';
-    errorHtml += '<h2><small>Contact Support (for support): Please screenshoot this error and send it to Suma A. nor Iyyan A.</small></h2>';
-    return HtmlService.createHtmlOutput(errorHtml).setTitle("Processing Error");
+      Logger.log("Error in doGet: " + err.toString() + "\nStack: " + err.stack);
+
+      const errorHtml = `
+        <html>
+          <head>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+            <title>Processing Error</title>
+            <style>
+              body {
+                background-color: #f8f9fa;
+              }
+              .error-container {
+                max-width: 700px;
+                margin: 5% auto;
+                padding: 2rem;
+                background: white;
+                border-radius: 15px;
+                box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
+              }
+              small {
+                font-family: monospace;
+                color: #555;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="error-container text-center">
+                <h1 class="text-danger mb-4">⚠️ Oops! Something went wrong.</h1>
+                <p class="lead">We encountered an error while processing your request.</p>
+                <p>This may be due to:</p>
+                <ul class="list-group list-group-flush mb-3">
+                  <li class="list-group-item">🔄 An outdated or already processed request</li>
+                  <li class="list-group-item">🌐 A temporary network issue</li>
+                  <li class="list-group-item">⚙️ Internal processing error</li>
+                </ul>
+                <p class="mb-3">Please try again later or contact support if the problem persists.</p>
+                <div class="alert alert-secondary text-start" role="alert">
+                  <strong>Error Details:</strong><br>
+                  <small>${escapeHtml(err.toString())}</small>
+                </div>
+                <p class="text-muted"><strong>Support:</strong> Please screenshot this page and contact <strong>Suma A.</strong> or <strong>Iyyan A.</strong></p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      return HtmlService.createHtmlOutput(errorHtml).setTitle("Processing Error");
+    }
   }
-}
 
 function submitRequest(name, email, department, leaveType, startDate, endDate, reason) {
   try {
@@ -585,22 +626,29 @@ function submitRequest(name, email, department, leaveType, startDate, endDate, r
     const saumpaniHRprei = ["Annual Leave", "Bereavement Leave", "Career Leave", "Ceremony Leave", "Sick Leave", "Unpaid Leave", "Other", "Working From Home (WFH)"]; // If SPV as a HR(Dyah Retno) submit all leave it must set nextstage to GM!
 
     if (ikiEmailnyaSPVngertiOra) {
-      // This is case when your HRGA is also the SPV of HRGA, you know what I mean, chiiizzzzz ~xD
-      // So if your HRGA is on different posisition you're not need this
-      // That's mean you gonna change the flow from here
+      // SPV is the one submitting
       if (saumpaniHRprei.includes(leaveType) && ikiEmailnyaHRngertiOra) {
+        // Special case: HR is also the SPV and picks Unpaid Leave
+        stage = "GM Review";
+        approvalEmail = gmEmail;
+      } else if (leaveType === "Working From Home (WFH)") {
+        // SPV WFH goes to GM
         stage = "GM Review";
         approvalEmail = gmEmail;
       } else {
         stage = "HR Review";
         approvalEmail = hrEmail;
       }
+
     } else if (ikiEmailnyaGMngertiOra) {
+      // GM submits any leave → goes to HR
       stage = "HR Review";
       approvalEmail = hrEmail;
+
     } else {
+      // Employee (not SPV or GM)
       if (leaveType === "Working From Home (WFH)") {
-        stage = "SPV Approval"; // employee WFH should go to SPV
+        stage = "SPV Approval"; // Emp WFH → SPV
         approvalEmail = spvEmail;
       } else {
         stage = "SPV Approval";
@@ -721,7 +769,7 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
       <p><strong>Reason:</strong> ${reason || 'N/A'}</p>
       <p><strong>Note:</strong> ${finalNote}</p>
       <div style="margin-top: 20px;">
-        <a href="${calendarLink}" target="_blank" style="display:inline-block; padding:10px 20px; background-color:#007bff; color:white; text-decoration:none; border-radius:.25rem;">?     Add to Google Calendar</a>
+        <a href="${calendarLink}" target="_blank" style="display:inline-block; padding:10px 20px; background-color:#007bff; color:white; text-decoration:none; border-radius:.25rem;">➕     Add to Google Calendar</a>
       </div>
     </div>
   `;
@@ -760,18 +808,18 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
   template.baseUrl = baseUrl;
   template.row = row;
 
-  // ?? Extract normalized stage (lowercase)  Used for URL param
+  // 🧠 Extract normalized stage (lowercase) → Used for URL param
   const shortStage = stage.toLowerCase().includes("spv") ? "spv"
                    : stage.toLowerCase().includes("hr") ? "hr"
                    : stage.toLowerCase().includes("gm") ? "gm"
                    : "unknown"; // fallback
 
   if (!tokenToUse || shortStage === "unknown") {
-    Logger.log(`? Missing token or invalid stage in sendApprovalEmail for stage: ${stage}, row: ${row}`);
+    Logger.log(`❗ Missing token or invalid stage in sendApprovalEmail for stage: ${stage}, row: ${row}`);
     return;
   }
 
-  // ? Safe & encoded approval/rejection URLs
+  // ✅ Safe & encoded approval/rejection URLs
   const encodedToken = encodeURIComponent(tokenToUse);
   const noteText = `Approved at ${stage}`;
   template.approveUrl = `${baseUrl}?action=approve&stage=${shortStage}&row=${row}&token=${encodedToken}&note=${encodeURIComponent(noteText)}`;
@@ -784,9 +832,9 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
       htmlBody: template.evaluate().getContent(),
       name: "ONEderland Approval System"
     });
-    Logger.log(`? Approval email sent to ${approverEmail} for ${name} at ${stage}`);
+    Logger.log(`✅ Approval email sent to ${approverEmail} for ${name} at ${stage}`);
   } catch (e) {
-    Logger.log(`? Failed to send approval email to ${approverEmail} for row ${row}. Error: ${e}`);
+    Logger.log(`❌ Failed to send approval email to ${approverEmail} for row ${row}. Error: ${e}`);
   }
 }
 
