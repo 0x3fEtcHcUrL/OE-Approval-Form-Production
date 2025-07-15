@@ -105,7 +105,7 @@ function showErrorTokenPage(title, message) {
       <body class="bg-light d-flex align-items-center justify-content-center vh-100">
         <div class="card shadow-lg" style="max-width: 500px;">
           <div class="card-body text-center">
-            <h3 class="text-danger mb-3">⚠️ ${title}</h3>
+            <h3 class="text-danger mb-3">?? ${title}</h3>
             <p class="text-muted">${message}</p>
             <hr>
             <a href="${ScriptApp.getService().getUrl()}" class="btn btn-primary mt-3">Return to Form</a>
@@ -152,7 +152,7 @@ function doGet(e) {
 
     const rejectionHtml = `
       <div style="font-family: Arial, sans-serif; color: #333;">
-        <h3 style="color: #dc3545;">❌ Leave Request Rejected - ${name}</h3>
+        <h3 style="color: #dc3545;">? Leave Request Rejected - ${name}</h3>
         <p><strong>Requester:</strong> ${name}</p>
         <p><strong>Department:</strong> ${department}</p>
         <p><strong>Leave Type:</strong> ${leaveType}</p>
@@ -218,7 +218,7 @@ function doGet(e) {
 
   //   const rejectionHtml = `
   //     <div style="font-family: Arial, sans-serif; color: #333;">
-  //       <h3 style="color: #dc3545;">❌ Leave Request Rejected - ${name}</h3>
+  //       <h3 style="color: #dc3545;">? Leave Request Rejected - ${name}</h3>
   //       <p><strong>Requester:</strong> ${name}</p>
   //       <p><strong>Department:</strong> ${department}</p>
   //       <p><strong>Leave Type:</strong> ${leaveType}</p>
@@ -417,14 +417,14 @@ function doGet(e) {
                 const allSpvEmails = Object.values(CONFIG.SPV_MAP);
                 const isRequesterSPV = allSpvEmails.includes(requester);
                 if (isRequesterSPV) {
-                  // SPV submits WFH → GM Review
+                  // SPV submits WFH  GM Review
                   nextStage = "GM Review";
                   sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
                   const gmToken = generateRandomToken();
                   sheet.getRange(rowIndex, COLUMNS.GM_TOKEN).setValue(gmToken);
                   sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.GM_EMAIL, nextStage, rowIndex, gmToken);
                 } else {
-                  // Non-SPV submits WFH → SPV Approval
+                  // Non-SPV submits WFH  SPV Approval
                   nextStage = "SPV Approval";
                   sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
                   const spvEmail = CONFIG.SPV_MAP[department] || CONFIG.DEFAULT_SPV;
@@ -446,7 +446,7 @@ function doGet(e) {
                 // Pass same token to the email function
                 sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.HR_EMAIL, nextStage, rowIndex, hrToken);
 
-                finalizeRequest(rowIndex, decision, note, name, requester, "Approved by SPV"); // ✅ only finalize for non-WFH
+                finalizeRequest(rowIndex, decision, note, name, requester, "Approved by SPV"); // ? only finalize for non-WFH
               }
               break;
 
@@ -455,11 +455,11 @@ function doGet(e) {
             // Best Use Cases Logic!
               // | **Submitter** | **Expected Approval Flow**            | **Expected Reject Flow**   | **Acc Flow** | **Reject Flow** |
               // | ------------- | ------------------------------------- | -------------------------- | ------------ | --------------- |
-              // | Employee      | SPV → HR → Reporting (V)              | Rejected at the stage of   | Done         | Done            |
-              // | SPV           | HR → GM → Reporting (V)               | ~~                         | Done         | Done            |
-              // | HR            | GM → Reporting (V)                    |   ~~                       | Done         | Done            | 
-              // | GM            | HR → Reporting (V)                    |     ~~                     | Done         | Done            |
-              // | Unpaid Leave  | SPV(V) → HR(V) → GM(V) → Reporting (V)|       ~~                   | Done         | Done            | GM Unpaid needs to fix!
+              // | Employee      | SPV  HR  Reporting (V)              | Rejected at the stage of   | Done         | Done            |
+              // | SPV           | HR  GM  Reporting (V)               | ~~                         | Done         | Done            |
+              // | HR            | GM  Reporting (V)                    |   ~~                       | Done         | Done            | 
+              // | GM            | HR  Reporting (V)                    |     ~~                     | Done         | Done            |
+              // | Unpaid Leave  | SPV(V)  HR(V)  GM(V)  Reporting (V)|       ~~                   | Done         | Done            | GM Unpaid needs to fix!
               // | WFH           | Emp -> SPV(V), SPV -> GM(X), HR -> GM(V), GM -> HR(V) |            | Done         | Done            |
               //
               //
@@ -483,7 +483,7 @@ function doGet(e) {
               }
 
               if (leaveType === "Working From Home (WFH)" && isRequesterHR) {
-                // Only HR-submitted WFH reaches here → send to GM
+                // Only HR-submitted WFH reaches here  send to GM
                 nextStage = "GM Review";
                 sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
                 const gmToken = generateRandomToken();
@@ -506,7 +506,7 @@ function doGet(e) {
 
             case "GM Review":
               if (leaveType === "Working From Home (WFH)") {
-                // WFH: HR submitted → GM → Reporting
+                // WFH: HR submitted  GM  Reporting
                 finalizeRequest(rowIndex, decision, note, name, requester, "Approved by GM");
               } else {
                 nextStage = "Final";
@@ -533,7 +533,7 @@ function doGet(e) {
 
           const rejectionHtml = `
             <div style="font-family: Arial, sans-serif; color: #333;">
-              <h3 style="color: #dc3545;">❌ Leave/WFH Request Rejected - ${name}</h3>
+              <h3 style="color: #dc3545;">? Leave/WFH Request Rejected - ${name}</h3>
               <p><strong>Requester:</strong> ${name}</p>
               <p><strong>Department:</strong> ${department}</p>
               <p><strong>Leave Type:</strong> ${leaveType}</p>
@@ -756,7 +756,7 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
       <p><strong>Reason:</strong> ${reason || 'N/A'}</p>
       <p><strong>Note:</strong> ${finalNote}</p>
       <div style="margin-top: 20px;">
-        <a href="${calendarLink}" target="_blank" style="display:inline-block; padding:10px 20px; background-color:#007bff; color:white; text-decoration:none; border-radius:.25rem;">➕     Add to Google Calendar</a>
+        <a href="${calendarLink}" target="_blank" style="display:inline-block; padding:10px 20px; background-color:#007bff; color:white; text-decoration:none; border-radius:.25rem;">?     Add to Google Calendar</a>
       </div>
     </div>
   `;
@@ -795,18 +795,18 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
   template.baseUrl = baseUrl;
   template.row = row;
 
-  // 🧠 Extract normalized stage (lowercase) → Used for URL param
+  // ?? Extract normalized stage (lowercase)  Used for URL param
   const shortStage = stage.toLowerCase().includes("spv") ? "spv"
                    : stage.toLowerCase().includes("hr") ? "hr"
                    : stage.toLowerCase().includes("gm") ? "gm"
                    : "unknown"; // fallback
 
   if (!tokenToUse || shortStage === "unknown") {
-    Logger.log(`❗ Missing token or invalid stage in sendApprovalEmail for stage: ${stage}, row: ${row}`);
+    Logger.log(`? Missing token or invalid stage in sendApprovalEmail for stage: ${stage}, row: ${row}`);
     return;
   }
 
-  // ✅ Safe & encoded approval/rejection URLs
+  // ? Safe & encoded approval/rejection URLs
   const encodedToken = encodeURIComponent(tokenToUse);
   const noteText = `Approved at ${stage}`;
   template.approveUrl = `${baseUrl}?action=approve&stage=${shortStage}&row=${row}&token=${encodedToken}&note=${encodeURIComponent(noteText)}`;
@@ -819,9 +819,9 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
       htmlBody: template.evaluate().getContent(),
       name: "ONEderland Approval System"
     });
-    Logger.log(`✅ Approval email sent to ${approverEmail} for ${name} at ${stage}`);
+    Logger.log(`? Approval email sent to ${approverEmail} for ${name} at ${stage}`);
   } catch (e) {
-    Logger.log(`❌ Failed to send approval email to ${approverEmail} for row ${row}. Error: ${e}`);
+    Logger.log(`? Failed to send approval email to ${approverEmail} for row ${row}. Error: ${e}`);
   }
 }
 
