@@ -10,20 +10,21 @@
 
 // Global Emails Configuration
 const CONFIG = {
-  REPORTING_EMAILS: ["bcc.finance03@gmail.com", "bcc.hrdteam@gmail.com"], //bcc finance and bcc hr team
-  GM_EMAIL: "ayu.septyani@educationone.net.au",
-  HR_EMAIL: "dyah.onederland@gmail.com",
+  REPORTING_EMAILS: ["reporting.1@gmail.com", "reporting.2@gmail.com"], // you can add your reporting team here
+  GM_EMAIL: "your.gm-email@example.com",
+  HR_EMAIL: "you.hr-email@example.com",
+  // SPV map is connected to form.html
   SPV_MAP: {
-    "Carbon Energy": "ika.widia@carbonenergy.net.au",
-    "Education ONE": "cesco.wowor@neuronerecruitment.com.au",
-    "English Cafe": "harris.englishcafe@gmail.com",
-    "General Manager": "ayu.septyani@educationone.net.au", 
-    "Neurone Recruitment": "cesco.wowor@neuronerecruitment.com.au",
-    "ONEderland Consulting": "ayu.karina@onederland.com.au",
-    "ONEderland Enterprise Finance": "sanistya.onederland@gmail.com",
-    "ONEderland Enterprise HRGA": "dyah.onederland@gmail.com", // SPV for HR tasks, if applicable
-    "PeraONE Xperience": "dyah.onederland@gmail.com", // SPV sementara ke HR, karena belom ada SPV
-    "SnG OE": "suma.onederland@gmail.com"
+    "Carbon Energy": "carbon.energy@example.com",
+    "Education ONE": "edu.one@example.com",
+    "English Cafe": "english.cafe@example.com",
+    "General Manager": "gm-email@example.com", 
+    "Neurone Recruitment": "neuron.recruit@example.com",
+    "ONEderland Consulting": "oc.email@example.com",
+    "ONEderland Enterprise Finance": "finance@example.com",
+    "ONEderland Enterprise HRGA": "hrga.team@example.com", // SPV for HR tasks, if applicable
+    "PeraONE Xperience": "pe.one@example.com",
+    "SnG OE": "sng.team@example.com"
   }
 };
 
@@ -50,7 +51,10 @@ const COLUMNS = {
   GM_DECISION: 19,
   SPV_TOKEN: 20,
   HR_TOKEN: 21,
-  GM_TOKEN: 22
+  GM_TOKEN: 22,
+  EMAIL: 23,  // Column W
+  LEAVE: 24,  // Column X
+  SICK: 25    // Column Y
 };
 
 /**
@@ -298,7 +302,7 @@ function doGet(e) {
                 const html = HtmlService.createTemplateFromFile('result');
                 html.action = currentStatus.toLowerCase();
                 html.stage = currentStage;
-                html.note = `This request was already processed as ${currentStatus}. ` + sheet.getRange(rowIndex, COLUMNS.NOTE).getValue();
+                html.note = sheet.getRange(rowIndex, COLUMNS.NOTE).getValue(); // Notes error.
                 html.nextStage = "Final";
                 return html.evaluate().setTitle("Request Processed");
             }
@@ -354,7 +358,10 @@ function doGet(e) {
         const savedToken = sheet.getRange(rowIndex, tokenColumn).getValue();
 
         if (validStage !== tokenColumn || savedToken !== tokenToUse || savedToken.endsWith("_used")) {
-          return showErrorTokenPage("You've Already Responded", `You can only respond once<br>Stage: <b>${currentStage}</b>`);
+          return showErrorTokenPage(
+            "You've Already Responded",
+            `Looks like you've already taken action on this request.<br>Current stage: <strong>${currentStage}</strong>.`
+          );
         }
 
         // Block re-approval if already finalized
@@ -382,6 +389,65 @@ function doGet(e) {
         sheet.getRange(rowIndex, COLUMNS.DECISION).setValue(decision + " by " + currentStage); // Be more specific
         sheet.getRange(rowIndex, COLUMNS.NOTE).setValue(note);
         sheet.getRange(rowIndex, COLUMNS.DECISION_DATE).setValue(new Date());
+
+        // === Start Balance Validation Logic ===
+        // Dynamically load leave balance data
+        const balanceStartRow = 7;
+        const balanceData = sheet.getRange(
+          balanceStartRow,
+          COLUMNS.EMAIL, // column W (23)
+          sheet.getLastRow() - (balanceStartRow - 1),
+          COLUMNS.SICK - COLUMNS.EMAIL + 1 // should be 3 columns (W to Y)
+        ).getValues();
+
+        const requesterEmail = requester.toLowerCase();
+        let balance = 0;
+        let sickBalance = 0;
+
+        for (const row of balanceData) {
+          if ((row[0] || "").toLowerCase() === requesterEmail) {
+            balance = parseInt(row[1]) || 0;
+            sickBalance = parseInt(row[2]) || 0;
+            break;
+          }
+        }
+
+        // const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+        const days = calculateLeaveDays(new Date(startDate), new Date(endDate));
+        const leaveTypeLower = leaveType.toLowerCase();
+
+        let balanceType = "Leave";
+
+        if (leaveType.toLowerCase().includes("sick")) balanceType = "Sick Leave";
+        if (leaveType.toLowerCase().includes("unpaid")) balanceType = "Unpaid";
+
+        const applicableBalance = balanceType === "Sick Leave" ? sickBalance : balance;
+
+        if ((leaveTypeLower.includes("annual") || leaveTypeLower.includes("sick")) && days > applicableBalance) {
+          const rejectionNote = performAutoReject(
+            rowIndex,                          // 1
+            applicableBalance,                // 2
+            balanceType,                      // 3
+            days,                             // 4
+            name,                             // 5 ✅ CORRECTED here
+            leaveType,                        // 6
+            startDate,                        // 7
+            endDate,                          // 8
+            reasonText,                       // 9
+            requester,                        // 10
+            spvEmail === requester ? "Auto-Rejected" : "",  // 11
+            hrEmail === requester ? "Auto-Rejected" : "",   // 12
+            gmEmail === requester ? "Auto-Rejected" : ""    // 13
+          );
+
+          const html = HtmlService.createTemplateFromFile('result');
+          html.action = 'reject';
+          html.stage = currentStage;
+          html.note = rejectionNote + "<br><br><strong>This request was automatically rejected due to insufficient balance.</strong>";
+          html.nextStage = "Final";
+          return html.evaluate().setTitle("Auto-Rejected");
+        }
+        // === End Balance Validation Logic ===
 
         if (action === 'approve') {
           sheet.getRange(rowIndex, COLUMNS.STATUS).setValue('Pending'); // Keep pending until final approval
@@ -427,19 +493,7 @@ function doGet(e) {
               const allSpvEmails = Object.values(CONFIG.SPV_MAP);
               const isRequesterSPV = allSpvEmails.includes(requester);
               const isRequesterHR = requester.toLowerCase() === CONFIG.HR_EMAIL.toLowerCase();
-              // const isRequesterGM = requester.toLowerCase() === CONFIG.GM_EMAIL.toLowerCase();
               const needsGM = (leaveType === "Unpaid Leave") || isRequesterSPV;
-
-              // if (leaveType === "Unpaid Leave" && isRequesterGM) {
-              //   // If GM submit Unpaid Leave it should be only end in HR Review, do not move to next stage!
-              //   nextStage = "Final";
-              //   sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
-              //   finalizeRequest(rowIndex, decision, note, name, requester, "Approved by HR")
-              // } else {
-              //   finalizeRequest(rowIndex, decision, note, name, requester, "Approved by HR");
-              // }
-
-              // Need to fix GM flow is he/she pick unpaid-leave! GM only need to HR, Not HR --> GM(again LOL)!
 
               if (leaveType === "Working From Home (WFH)") {
                 if (isRequesterHR) {
@@ -497,43 +551,36 @@ function doGet(e) {
           const leaveDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
 
           const rejectionHtml = `
-            <div style="font-family: Arial, sans-serif; color: #333;">
-              <h3 style="color: #dc3545;">❌ Leave/WFH Request Rejected - ${name}</h3>
-              <p><strong>Requester:</strong> ${name}</p>
-              <p><strong>Department:</strong> ${department}</p>
-              <p><strong>Leave Type:</strong> ${leaveType}</p>
-              <p><strong>Dates:</strong> ${formattedStartDate} to ${formattedEndDate} (${leaveDays} day${leaveDays > 1 ? 's' : ''})</p>
-              <p><strong>Reason:</strong> ${reasonText}</p>
-              <p><strong>Rejected at Stage:</strong> ${currentStage}</p>
-              <p><strong>Note:</strong> ${rejectionNote}</p>
-              <div style="margin-top: 20px; padding: 10px; background-color: #f8d7da; color: #721c24; border-left: 5px solid #f5c6cb;">
-                <strong>Status:</strong> Rejected
+              <div style="font-family: Arial, sans-serif; color: #333;">
+                <h3 style="color: #dc3545;">❌ Leave/WFH Request Rejected - ${name}</h3>
+                <p><strong>Requester:</strong> ${name}</p>
+                <p><strong>Department:</strong> ${department}</p>
+                <p><strong>Leave Type:</strong> ${leaveType}</p>
+                <p><strong>Dates:</strong> ${formattedStartDate} to ${formattedEndDate} (${leaveDays} day${leaveDays > 1 ? 's' : ''})</p>
+                <p><strong>Reason:</strong> ${reasonText}</p>
+                <p><strong>Rejected at Stage:</strong> ${currentStage}</p>
+                <p><strong>Note:</strong> ${rejectionNote}</p>
+                <div style="margin-top: 20px; padding: 10px; background-color: #f8d7da; color: #721c24; border-left: 5px solid #f5c6cb;">
+                  <strong>Status:</strong> Rejected
+                </div>
               </div>
-            </div>
-          `;
-          // Rejection email to requester
-          GmailApp.sendEmail(
-            requester,
-            `ONEderland Leave/WFH Request Rejected: ${name}`,
-            '',
-            { 
-              htmlBody: rejectionHtml,
-              name: 'ONEderland Approval System'
-            }
-          );
+            `;
+            // Rejection email to requester
+            GmailApp.sendEmail(
+              requester,
+              `ONEderland Leave/WFH Request Rejected: ${name}`,
+              '',
+              { 
+                htmlBody: rejectionHtml,
+                name: 'ONEderland Approval System'
+              }
+            );
 
-          // Rejection notification to reporting team
-          //CONFIG.REPORTING_EMAILS.forEach(email => {
-          //  GmailApp.sendEmail(email, `Leave Request Rejected - ${name}`, '', {
-          //    htmlBody: rejectionHtml,
-          //    name: 'ONEderland Approval System'
-          //  });
-          //});
-          nextStage = 'Final (Rejected)';
-        }
+            nextStage = 'Final (Rejected)';
+          }
     } finally {
-        lock.releaseLock();
-    }
+          lock.releaseLock();
+      }
 
     const html = HtmlService.createTemplateFromFile('result');
     html.action = action;
@@ -543,7 +590,8 @@ function doGet(e) {
     return html.evaluate().setTitle("Request Processed");
 
   } catch (err) {
-      Logger.log("Error in doGet: " + err.toString() + "\nStack: " + err.stack);
+      const stackLine = (err.stack || '').split('\n')[1] || 'Line unknown';
+      Logger.log("❌ Error in doGet:\n" + err.toString() + "\n📍 Location: " + stackLine);
 
       const errorHtml = `
         <html>
@@ -582,15 +630,14 @@ function doGet(e) {
                 <p class="mb-3">Please try again later or contact support if the problem persists.</p>
                 <div class="alert alert-secondary text-start" role="alert">
                   <strong>Error Details:</strong><br>
-                  <small>${escapeHtml(err.toString())}</small>
+                  <small>${escapeHtml(err.toString())}<br>${escapeHtml(stackLine)}</small>
                 </div>
-                <p class="text-muted"><strong>Support:</strong> Please screenshot this page and contact <strong>Suma A.</strong> or <strong>Iyyan A.</strong></p>
+                <p class="text-muted"><strong>Support:</strong> Please screenshot this page and contact <strong>Suma Antara</strong> or <strong>Iyyan Anugrah.</strong></p>
               </div>
             </div>
           </body>
         </html>
       `;
-
       return HtmlService.createHtmlOutput(errorHtml).setTitle("Processing Error");
     }
   }
@@ -708,56 +755,98 @@ function escapeHtml(text) {
 
 function finalizeRequest(row, decision, note, name, requesterEmail, finalApprovalStageNote) {
   const sheet = SpreadsheetApp.getActive().getSheetByName("Requests");
-
-  // FINAL NOTE: Handle fallback early before any usage
   const finalNote = note || finalApprovalStageNote || "No Notes";
 
-  // Update status and stage
-  sheet.getRange(row, COLUMNS.STATUS).setValue(decision); // 'Approved' or 'Rejected'
-  sheet.getRange(row, COLUMNS.STAGE).setValue('Completed');
-  sheet.getRange(row, COLUMNS.NOTE).setValue(finalNote);
-
-  // Get detailed request data
   const leaveType = sheet.getRange(row, COLUMNS.LEAVE_TYPE).getValue();
   const startDate = sheet.getRange(row, COLUMNS.START_DATE).getValue();
   const endDate = sheet.getRange(row, COLUMNS.END_DATE).getValue();
   const reason = sheet.getRange(row, COLUMNS.REASON).getValue();
   const spvStatus = sheet.getRange(row, COLUMNS.SPV_DECISION).getValue();
-  const hrStatus = (COLUMNS.HR_DECISION) ? sheet.getRange(row, COLUMNS.HR_DECISION).getValue() : '';
-  const gmStatus = (COLUMNS.GM_DECISION) ? sheet.getRange(row, COLUMNS.GM_DECISION).getValue() : '';
+  const hrStatus = sheet.getRange(row, COLUMNS.HR_DECISION).getValue() || '';
+  const gmStatus = sheet.getRange(row, COLUMNS.GM_DECISION).getValue() || '';
+  const department = sheet.getRange(row, COLUMNS.DEPARTMENT).getValue();
+  const days = calculateLeaveDays(startDate, endDate);
 
-  const days = (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24) + 1;
+  const leaveTypes = {
+    annual: ["Annual Leave", "Bereavement Leave", "Career Leave", "Ceremony Leave", "Other"],
+    sick: ["Sick Leave"]
+  };
 
-  // Final Notification to Requester
+  const balanceStartRow = 7;
+  const balanceRange = sheet.getRange(balanceStartRow, COLUMNS.EMAIL, sheet.getLastRow() - (balanceStartRow - 1), 3).getValues();
+  const requester = requesterEmail.toLowerCase();
+  let currentLeave = 0, currentSick = 0, updatedBalance = null;
+
+  for (let i = 0; i < balanceRange.length; i++) {
+    const [email, leaveBal, sickBal] = balanceRange[i];
+    if (!email) continue;
+
+    if (email.toLowerCase() === requester) {
+      currentLeave = parseInt(leaveBal) || 0;
+      currentSick = parseInt(sickBal) || 0;
+
+      if (decision === "Approved") {
+        const isAnnual = leaveTypes.annual.includes(leaveType);
+        const isSick = leaveTypes.sick.includes(leaveType);
+
+        if (isAnnual && days > currentLeave) {
+          performAutoReject(row, currentLeave, "Annual", days, name, leaveType, startDate, endDate, reason, requesterEmail, spvStatus, hrStatus, gmStatus);
+          return;
+        }
+
+        if (isSick && days > currentSick) {
+          performAutoReject(row, currentSick, "Sick", days, name, leaveType, startDate, endDate, reason, requesterEmail, spvStatus, hrStatus, gmStatus);
+          return;
+        }
+
+        const rowOffset = balanceStartRow + i;
+        if (isAnnual) {
+          const newLeave = Math.max(0, currentLeave - days);
+          sheet.getRange(rowOffset, COLUMNS.LEAVE).setValue(newLeave);
+          updatedBalance = { leave: newLeave, sick: currentSick };
+        } else if (isSick) {
+          const newSick = Math.max(0, currentSick - days);
+          sheet.getRange(rowOffset, COLUMNS.SICK).setValue(newSick);
+          updatedBalance = { leave: currentLeave, sick: newSick };
+        }
+      }
+
+      break;
+    }
+  }
+
+  // Update final approval status
+  sheet.getRange(row, COLUMNS.STATUS).setValue(decision);
+  sheet.getRange(row, COLUMNS.STAGE).setValue("Completed");
+  sheet.getRange(row, COLUMNS.NOTE).setValue(finalNote);
+
+  // Prepare notification data
+  const formattedStart = Utilities.formatDate(new Date(startDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
+  const formattedEnd = Utilities.formatDate(new Date(endDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
+
+  // Final Notification Email to Requester
   const template = HtmlService.createTemplateFromFile('finalNotification');
-  template.name = name;
-  template.leaveType = leaveType;
-  template.startDate = Utilities.formatDate(new Date(startDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
-  template.endDate = Utilities.formatDate(new Date(endDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
-  template.totalDays = days;
-  template.reason = reason;
-  template.spvStatus = spvStatus;
-  template.hrStatus = hrStatus;
-  template.gmStatus = gmStatus;
-  template.finalDecision = decision;
-  template.finalNote = finalNote;
+  Object.assign(template, {
+    name, leaveType, reason,
+    startDate: formattedStart,
+    endDate: formattedEnd,
+    totalDays: days,
+    spvStatus, hrStatus, gmStatus,
+    finalDecision: decision,
+    finalNote,
+    updatedBalance
+  });
 
   const htmlBody = template.evaluate().getContent();
-
-  // Final decision email to requester (Approved/Rejected)
   GmailApp.sendEmail(requesterEmail, `ONEderland Leave Request ${decision}: ${name}`, '', {
-    htmlBody: htmlBody,
+    htmlBody,
     name: 'ONEderland Approval System'
   });
 
-  // Notify Reporting Team
-  const department = sheet.getRange(row, COLUMNS.DEPARTMENT).getValue();
-  const calendarTitle = `${name} - ${leaveType}`;
+  // Reporting Team Notification with Calendar Link
+  const calendarTitle = `${name}'s ${leaveType}`;
   const calendarDescription = `Leave Request\nRequester: ${name}\nDepartment: ${department}\nType: ${leaveType}\nDecision: ${decision}\nNote: ${finalNote}`;
   const calendarLink = generateCalendarLink(calendarTitle, startDate, endDate, calendarDescription);
-
-  const formattedStart = Utilities.formatDate(new Date(startDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
-  const formattedEnd = Utilities.formatDate(new Date(endDate), Session.getScriptTimeZone(), "dd-MM-yyyy");  
 
   const reportingHtml = `
     <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f8f9fa; color: #212529; border: 1px solid #dee2e6; border-radius: .25rem;">
@@ -769,14 +858,13 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
       <p><strong>Reason:</strong> ${reason || 'N/A'}</p>
       <p><strong>Note:</strong> ${finalNote}</p>
       <div style="margin-top: 20px;">
-        <a href="${calendarLink}" target="_blank" style="display:inline-block; padding:10px 20px; background-color:#007bff; color:white; text-decoration:none; border-radius:.25rem;">➕     Add to Google Calendar</a>
+        <a href="${calendarLink}" target="_blank" style="display:inline-block; padding:10px 20px; background-color:#007bff; color:white; text-decoration:none; border-radius:.25rem;">➕ Add to Google Calendar</a>
       </div>
     </div>
   `;
 
-  // Final decision email to reporting team
   CONFIG.REPORTING_EMAILS.forEach(email => {
-    GmailApp.sendEmail(email, `Leave/WFH Request ${decision} - ${name}`, '', { 
+    GmailApp.sendEmail(email, `Leave/WFH Request ${decision} - ${name}`, '', {
       htmlBody: reportingHtml,
       name: 'ONEderland Approval System'
     });
@@ -808,7 +896,7 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
   template.baseUrl = baseUrl;
   template.row = row;
 
-  // 🧠 Extract normalized stage (lowercase) → Used for URL param
+  // Extract normalized stage (lowercase) → Used for URL param
   const shortStage = stage.toLowerCase().includes("spv") ? "spv"
                    : stage.toLowerCase().includes("hr") ? "hr"
                    : stage.toLowerCase().includes("gm") ? "gm"
@@ -819,7 +907,7 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
     return;
   }
 
-  // ✅ Safe & encoded approval/rejection URLs
+  // Safe & encoded approval/rejection URLs
   const encodedToken = encodeURIComponent(tokenToUse);
   const noteText = `Approved at ${stage}`;
   template.approveUrl = `${baseUrl}?action=approve&stage=${shortStage}&row=${row}&token=${encodedToken}&note=${encodeURIComponent(noteText)}`;
@@ -865,4 +953,100 @@ function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, 
   } catch (e) {
     Logger.log("Failed to send confirmation email to " + email + ". Error: " + e.toString());
   }
+}
+
+// Update Balance and detect balance on colums.email
+function getLeaveBalanceByEmail(email) {
+  if (!email || typeof email !== 'string') {
+    throw new Error("Invalid email passed to getLeaveBalanceByEmail");
+  }
+
+  const sheet = SpreadsheetApp.getActive().getSheetByName("Requests");
+  const data = sheet.getDataRange().getValues();
+
+  const inputEmail = email.toString().trim().toLowerCase();
+
+  for (let i = 1; i < data.length; i++) {
+    const rowEmailRaw = data[i][COLUMNS.EMAIL - 1]; 
+    if (!rowEmailRaw) continue;
+
+    const rowEmail = rowEmailRaw.toString().trim().toLowerCase();
+
+    if (rowEmail === inputEmail) {
+      return {
+        leave: parseFloat(data[i][COLUMNS.LEAVE - 1]) || 0,
+        sick: parseFloat(data[i][COLUMNS.SICK - 1]) || 0
+      };
+    }
+  }
+
+  return { leave: 0, sick: 0 };
+}
+
+function calculateLeaveDays(startDate, endDate) {
+  let start = new Date(startDate);
+  let end = new Date(endDate);
+  let count = 0;
+
+  while (start <= end) {
+    const day = start.getDay();
+    if (day !== 0 && day !== 6) { // Mon-Fri only
+      count++;
+    }
+    start.setDate(start.getDate() + 1);
+  }
+
+  return count;
+}
+
+function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType, startDate, endDate, reason, requester, spvStatus, hrStatus, gmStatus) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
+  const rejectionNote = `Auto-rejected, Only ${balance} ${balanceType.toLowerCase()} day(s) left, but ${days} requested.`;
+  const systemNote = `Your request was rejected because you only have ${balance} ${balanceType.toLowerCase()} day(s) left, but you requested ${days} day(s).`;
+
+  // Update sheet
+  sheet.getRange(rowIndex, COLUMNS.STATUS).setValue("Rejected");
+  sheet.getRange(rowIndex, COLUMNS.STAGE).setValue("Completed");
+  sheet.getRange(rowIndex, COLUMNS.NOTE).setValue(rejectionNote);
+
+  // Fetch current leave balances from "Request" sheet (W: email, X: leave, Y: sick)
+  const balanceSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
+  const balanceStartRow = 7;
+  const balanceRange = balanceSheet.getRange(balanceStartRow, COLUMNS.EMAIL, balanceSheet.getLastRow() - (balanceStartRow - 1), 3).getValues();
+
+  let currentLeave = 0, currentSick = 0;
+  const requesterLower = requester.toLowerCase();
+  for (const [email, leaveBal, sickBal] of balanceRange) {
+    if (email && email.toLowerCase() === requesterLower) {
+      currentLeave = parseInt(leaveBal) || 0;
+      currentSick = parseInt(sickBal) || 0;
+      break;
+    }
+  }
+
+  // Final rejection email
+  const template = HtmlService.createTemplateFromFile('finalNotification');
+  template.name = name;
+  template.leaveType = leaveType;
+  template.startDate = Utilities.formatDate(new Date(startDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
+  template.endDate = Utilities.formatDate(new Date(endDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
+  template.totalDays = days;
+  template.reason = reason;
+  template.spvStatus = spvStatus;
+  template.hrStatus = hrStatus;
+  template.gmStatus = gmStatus;
+  template.finalDecision = "Rejected";
+  template.finalNote = systemNote; // Use updated extra note
+  template.updatedBalance = {
+    leave: currentLeave,
+    sick: currentSick
+  };
+
+  const htmlBody = template.evaluate().getContent();
+  GmailApp.sendEmail(requester, `ONEderland Leave Request Rejected: ${name}`, '', {
+    htmlBody: htmlBody,
+    name: 'ONEderland Approval System'
+  });
+
+  return rejectionNote;
 }
