@@ -375,7 +375,7 @@
     // Validate leave balance
     google.script.run
       .withSuccessHandler((balance) => {
-        if (!balance || typeof balance.leave !== 'number' || typeof balance.sick !== 'number') {
+        if (!balance) {
           loadingScreen.style.display = "none";
 
           const emailField = document.getElementById("email");
@@ -383,11 +383,10 @@
 
           resultBody.innerHTML = `
             <div class="alert alert-danger text-dark">
-              <strong>Unregistered Email:</strong><br>
-              The email address <code>${email}</code> is not registered in our system.<br>
-              Please use your official office email (e.g., <code>your.name@company.com</code>).
+              <strong>Email Not Registered:</strong><br>
+              Your email <code>${email}</code> is not registered in our system.
             </div>`;
-          
+
           resultModal.show();
           submitBtn.disabled = false;
           submitBtn.innerText = "Submit Request";
@@ -401,10 +400,12 @@
           loadingScreen.style.display = "none";
           resultBody.innerHTML = `
             <div class="alert alert-warning text-dark">
-              <strong>Submission Rejected:</strong><br>
-              You requested <strong>${requestedDays}</strong> day(s) of <strong>${leaveType}</strong>,<br>
-              but only <strong>${available}</strong> day(s) remain in your balance.
+              <strong>Submission Rejected:</strong><br><br>
+              Your request is for <strong>${requestedDays}</strong> day(s) of <strong>${leaveType}</strong>.<br>
+              <span style="color:red;">Unfortunately, you only have <strong>${available}</strong> remaining leave day(s) available.</span><br>
+              Kindly reach out to HR for further information.
             </div>`;
+            
           resultModal.show();
           submitBtn.disabled = false;
           submitBtn.innerText = "Submit Request";

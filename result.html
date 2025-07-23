@@ -41,9 +41,9 @@
     <div class="card-body">
       <!-- Title -->
       <h2 class="card-title mb-3">
-        <? const isAutoRejected = (action === 'approve' && note && note.includes('Auto-rejected:')); ?>
+        <? const isAutoRejected = (action === 'reject' && note && note.includes('Auto-rejected,')); ?>
         <? if (isAutoRejected) { ?>
-          <span class="text-warning">⚠️ System Overrode Approval → Auto-Rejected</span>
+          <span class="text-warning">⚠️ System Override → Auto-Rejected</span>
         <? } else if (action === 'approve') { ?>
           <span class="text-success">✅ Request Approved</span>
         <? } else if (action === 'reject') { ?>

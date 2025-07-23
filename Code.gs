@@ -10,21 +10,20 @@
 
 // Global Emails Configuration
 const CONFIG = {
-  REPORTING_EMAILS: ["reporting.1@gmail.com", "reporting.2@gmail.com"], // you can add your reporting team here
-  GM_EMAIL: "your.gm-email@example.com",
-  HR_EMAIL: "you.hr-email@example.com",
-  // SPV map is connected to form.html
+  REPORTING_EMAILS: ["khusushackingsaja@gmail.com"], 
+  GM_EMAIL: "suma.onederland@gmail.com",
+  HR_EMAIL: "suma.onederland@gmail.com",
   SPV_MAP: {
-    "Carbon Energy": "carbon.energy@example.com",
-    "Education ONE": "edu.one@example.com",
-    "English Cafe": "english.cafe@example.com",
-    "General Manager": "gm-email@example.com", 
-    "Neurone Recruitment": "neuron.recruit@example.com",
-    "ONEderland Consulting": "oc.email@example.com",
-    "ONEderland Enterprise Finance": "finance@example.com",
-    "ONEderland Enterprise HRGA": "hrga.team@example.com", // SPV for HR tasks, if applicable
-    "PeraONE Xperience": "pe.one@example.com",
-    "SnG OE": "sng.team@example.com"
+    "Carbon Energy": "iyyan.onederland@gmail.com",
+    "Education ONE": "iyyan.onederland@gmail.com",
+    "English Cafe": "iyyan.onederland@gmail.com",
+    "General Manager": "iyyan.onederland@gmail.com", 
+    "Neurone Recruitment": "iyyan.onederland@gmail.com",
+    "ONEderland Consulting": "iyyan.onederland@gmail.com",
+    "ONEderland Enterprise Finance": "iyyan.onederland@gmail.com",
+    "ONEderland Enterprise HRGA": "iyyan.onederland@gmail.com", 
+    "PeraONE Xperience": "iyyan.onederland@gmail.com", 
+    "SnG OE": "suma.onederland@gmail.com"
   }
 };
 
@@ -414,22 +413,29 @@ function doGet(e) {
 
         // const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
         const days = calculateLeaveDays(new Date(startDate), new Date(endDate));
-        const leaveTypeLower = leaveType.toLowerCase();
+        // const leaveTypeLower = leaveType.toLowerCase();
 
         let balanceType = "Leave";
-
         if (leaveType.toLowerCase().includes("sick")) balanceType = "Sick Leave";
         if (leaveType.toLowerCase().includes("unpaid")) balanceType = "Unpaid";
 
         const applicableBalance = balanceType === "Sick Leave" ? sickBalance : balance;
 
-        if ((leaveTypeLower.includes("annual") || leaveTypeLower.includes("sick")) && days > applicableBalance) {
+        const leaveTypes = {
+          annual: ["Annual Leave", "Bereavement Leave", "Career Leave", "Ceremony Leave", "Other"],
+          sick: ["Sick Leave"]
+        };
+
+        const cekAnnual = leaveTypes.annual.includes(leaveType);
+        const cekSick = leaveTypes.sick.includes(leaveType);
+
+        if ((cekAnnual || cekSick) && days > applicableBalance) {
           const rejectionNote = performAutoReject(
             rowIndex,                          // 1
             applicableBalance,                // 2
             balanceType,                      // 3
             days,                             // 4
-            name,                             // 5 ✅ CORRECTED here
+            name,                             // 5
             leaveType,                        // 6
             startDate,                        // 7
             endDate,                          // 8
@@ -443,8 +449,12 @@ function doGet(e) {
           const html = HtmlService.createTemplateFromFile('result');
           html.action = 'reject';
           html.stage = currentStage;
-          html.note = rejectionNote + "<br><br><strong>This request was automatically rejected due to insufficient balance.</strong>";
+          html.note = rejectionNote + "<br><br><strong>This request was automatically rejected due to insufficient balance.</strong>"; // include Auto-rejected:
           html.nextStage = "Final";
+
+          Logger.log('Result Action:', html.action);
+          Logger.log('Result Note:', html.note);
+
           return html.evaluate().setTitle("Auto-Rejected");
         }
         // === End Balance Validation Logic ===
@@ -963,11 +973,10 @@ function getLeaveBalanceByEmail(email) {
 
   const sheet = SpreadsheetApp.getActive().getSheetByName("Requests");
   const data = sheet.getDataRange().getValues();
-
-  const inputEmail = email.toString().trim().toLowerCase();
+  const inputEmail = email.trim().toLowerCase();
 
   for (let i = 1; i < data.length; i++) {
-    const rowEmailRaw = data[i][COLUMNS.EMAIL - 1]; 
+    const rowEmailRaw = data[i][COLUMNS.EMAIL - 1];
     if (!rowEmailRaw) continue;
 
     const rowEmail = rowEmailRaw.toString().trim().toLowerCase();
@@ -980,8 +989,10 @@ function getLeaveBalanceByEmail(email) {
     }
   }
 
-  return { leave: 0, sick: 0 };
+  // ❗️Email not found
+  return null;
 }
+
 
 function calculateLeaveDays(startDate, endDate) {
   let start = new Date(startDate);
@@ -1047,6 +1058,8 @@ function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType
     htmlBody: htmlBody,
     name: 'ONEderland Approval System'
   });
+
+  Logger.log('🚨 performAutoReject triggered. Returning note: ' + rejectionNote);
 
   return rejectionNote;
 }
