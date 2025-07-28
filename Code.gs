@@ -4,56 +4,56 @@
  * 
  * Contact the creator for support, feature requests, or issues.
  *
- * Version: 7.17
- * Date: 2025-05-30
+ * Version: 10
+ * Date: July 26, 2025
  */
 
 // Global Emails Configuration
 const CONFIG = {
-  REPORTING_EMAILS: ["khusushackingsaja@gmail.com"], 
-  GM_EMAIL: "suma.onederland@gmail.com",
-  HR_EMAIL: "suma.onederland@gmail.com",
+  REPORTING_EMAILS: ["bcc.finance03@gmail.com", "bcc.hrdteam@gmail.com"], //bcc finance and bcc hr team
+  GM_EMAIL: "ayu.septyani@educationone.net.au",
+  HR_EMAIL: "dyah.onederland@gmail.com",
   SPV_MAP: {
-    "Carbon Energy": "iyyan.onederland@gmail.com",
-    "Education ONE": "iyyan.onederland@gmail.com",
-    "English Cafe": "iyyan.onederland@gmail.com",
-    "General Manager": "iyyan.onederland@gmail.com", 
-    "Neurone Recruitment": "iyyan.onederland@gmail.com",
-    "ONEderland Consulting": "iyyan.onederland@gmail.com",
-    "ONEderland Enterprise Finance": "iyyan.onederland@gmail.com",
-    "ONEderland Enterprise HRGA": "iyyan.onederland@gmail.com", 
-    "PeraONE Xperience": "iyyan.onederland@gmail.com", 
+    "Carbon Energy": "ika.widia@carbonenergy.net.au",
+    "Education ONE": "cesco.wowor@neuronerecruitment.com.au",
+    "English Cafe": "harris.englishcafe@gmail.com",
+    "General Manager": "ayu.septyani@educationone.net.au", 
+    "Neurone Recruitment": "cesco.wowor@neuronerecruitment.com.au",
+    "ONEderland Consulting": "ayu.karina@onederland.com.au",
+    "ONEderland Enterprise Finance": "sanistya.onederland@gmail.com",
+    "ONEderland Enterprise HRGA": "dyah.onederland@gmail.com", // SPV for HR tasks, if applicable
+    "PeraONE Xperience": "dyah.onederland@gmail.com", // SPV sementara ke HR, karena belom ada SPV
     "SnG OE": "suma.onederland@gmail.com"
   }
 };
 
 // Column indices
 const COLUMNS = {
-  TIMESTAMP: 1,
-  NAME: 2,
-  DEPARTMENT: 3,
-  LEAVE_TYPE: 4,
-  START_DATE: 5,
-  END_DATE: 6,
-  REASON: 7,
-  STATUS: 8,
-  REQUESTER_EMAIL: 9,
-  SPV_EMAIL: 10,
-  HR_EMAIL: 11,
-  GM_EMAIL: 12,
-  STAGE: 13,
-  DECISION: 14,
-  NOTE: 15,
-  DECISION_DATE: 16,
-  SPV_DECISION: 17,
-  HR_DECISION: 18,
-  GM_DECISION: 19,
-  SPV_TOKEN: 20,
-  HR_TOKEN: 21,
-  GM_TOKEN: 22,
-  EMAIL: 23,  // Column W
-  LEAVE: 24,  // Column X
-  SICK: 25    // Column Y
+  TIMESTAMP: 1,       // Column A
+  NAME: 2,            // Column B
+  DEPARTMENT: 3,      // Column C
+  LEAVE_TYPE: 4,      // Column D
+  START_DATE: 5,      // Column E
+  END_DATE: 6,        // Column F
+  REASON: 7,          // Column G
+  STATUS: 8,          // Column H
+  REQUESTER_EMAIL: 9, // Column I
+  SPV_EMAIL: 10,      // Column J
+  HR_EMAIL: 11,       // Column K
+  GM_EMAIL: 12,       // Column L
+  STAGE: 13,          // Column M
+  DECISION: 14,       // Column N
+  NOTE: 15,           // Column O
+  DECISION_DATE: 16,  // Column P
+  SPV_DECISION: 17,   // Column Q
+  HR_DECISION: 18,    // Column R
+  GM_DECISION: 19,    // Column S
+  SPV_TOKEN: 20,      // Column T
+  HR_TOKEN: 21,       // Column U
+  GM_TOKEN: 22,       // Column V
+  EMAIL: 23,          // Column W
+  LEAVE: 24,          // Column X
+  SICK: 25            // Column Y
 };
 
 /**
@@ -125,62 +125,65 @@ function doGet(e) {
   const action = e.parameter.action;
   const row = parseInt(e.parameter.row, 10);
   const stage = e.parameter.stage;
-  const note = e.parameter.note;
+  // const note = e.parameter.note;
 
   // Process the actual rejection with notes here
-  if (action === 'review' && row && stage && note !== undefined) {
-    // return processRejectionWithNote(row, stage, note);  // Enable this must enable to function rejection on line 197
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const COLUMNS = Object.fromEntries(headers.map((h, i) => [h, i + 1]));
+  // Reject With Notes start Here
+  // if (action === 'review' && row && stage && note !== undefined) {
+  //   // return processRejectionWithNote(row, stage, note);  // Enable this must enable to function rejection on line 196
+  //   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
+  //   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  //   const COLUMNS = Object.fromEntries(headers.map((h, i) => [h, i + 1]));
 
-    const rowIndex = row;
-    const values = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+  //   const rowIndex = row;
+  //   const values = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
 
-    const name = values[COLUMNS["Name"] - 1];
-    const department = values[COLUMNS["Department"] - 1];
-    const leaveType = values[COLUMNS["Leave Type"] - 1];
-    const startDate = values[COLUMNS["Start Date"] - 1];
-    const endDate = values[COLUMNS["End Date"] - 1];
-    const requester = values[COLUMNS["Requester Email"] - 1];
-    const reasonText = values[COLUMNS["Reason"] - 1];
-    const currentStage = stage;
+  //   const name = values[COLUMNS["Name"] - 1];
+  //   const department = values[COLUMNS["Department"] - 1];
+  //   const leaveType = values[COLUMNS["Leave Type"] - 1];
+  //   const startDate = values[COLUMNS["Start Date"] - 1];
+  //   const endDate = values[COLUMNS["End Date"] - 1];
+  //   const requester = values[COLUMNS["Requester Email"] - 1];
+  //   const reasonText = values[COLUMNS["Reason"] - 1];
+  //   const currentStage = stage;
 
-    sheet.getRange(rowIndex, COLUMNS["Status"]).setValue('Rejected');
-    sheet.getRange(rowIndex, COLUMNS["Stage"]).setValue('Rejected at ' + currentStage);
+  //   sheet.getRange(rowIndex, COLUMNS["Status"]).setValue('Rejected');
+  //   sheet.getRange(rowIndex, COLUMNS["Stage"]).setValue('Rejected at ' + currentStage);
 
-    const formattedStartDate = Utilities.formatDate(new Date(startDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
-    const formattedEndDate = Utilities.formatDate(new Date(endDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
-    const leaveDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+  //   const formattedStartDate = Utilities.formatDate(new Date(startDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
+  //   const formattedEndDate = Utilities.formatDate(new Date(endDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
+  //   const leaveDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
 
-    const rejectionHtml = `
-      <div style="font-family: Arial, sans-serif; color: #333;">
-        <h3 style="color: #dc3545;">❌ Leave Request Rejected - ${name}</h3>
-        <p><strong>Requester:</strong> ${name}</p>
-        <p><strong>Department:</strong> ${department}</p>
-        <p><strong>Leave Type:</strong> ${leaveType}</p>
-        <p><strong>Dates:</strong> ${formattedStartDate} to ${formattedEndDate} (${leaveDays} day${leaveDays > 1 ? 's' : ''})</p>
-        <p><strong>Reason:</strong> ${reasonText}</p>
-        <p><strong>Rejected at Stage:</strong> ${currentStage}</p>
-        <p><strong>Note:</strong> ${note}</p>
-        <div style="margin-top: 20px; padding: 10px; background-color: #f8d7da; color: #721c24; border-left: 5px solid #f5c6cb;">
-          <strong>Status:</strong> Rejected
-        </div>
-      </div>
-    `;
+  //   const rejectionHtml = `
+  //     <div style="font-family: Arial, sans-serif; color: #333;">
+  //       <h3 style="color: #dc3545;">❌ Leave Request Rejected - ${name}</h3>
+  //       <p><strong>Requester:</strong> ${name}</p>
+  //       <p><strong>Department:</strong> ${department}</p>
+  //       <p><strong>Leave Type:</strong> ${leaveType}</p>
+  //       <p><strong>Dates:</strong> ${formattedStartDate} to ${formattedEndDate} (${leaveDays} day${leaveDays > 1 ? 's' : ''})</p>
+  //       <p><strong>Reason:</strong> ${reasonText}</p>
+  //       <p><strong>Rejected at Stage:</strong> ${currentStage}</p>
+  //       <p><strong>Note:</strong> ${note}</p>
+  //       <div style="margin-top: 20px; padding: 10px; background-color: #f8d7da; color: #721c24; border-left: 5px solid #f5c6cb;">
+  //         <strong>Status:</strong> Rejected
+  //       </div>
+  //     </div>
+  //   `;
 
-    GmailApp.sendEmail({
-      to: requester,
-      subject: `ONEderland Leave/WFH Request Rejected: ${name}`,
-      htmlBody: rejectionHtml,
-      name: "ONEderland Approval System"
-    });
-    const resultTemplate = HtmlService.createTemplateFromFile('result');
-    resultTemplate.status = "Rejected";
-    resultTemplate.message = "Rejection submitted successfully with notes.";
-    resultTemplate.color = "danger";
-    return resultTemplate.evaluate().setTitle("Rejection Submitted");
-  }
+  //   GmailApp.sendEmail({
+  //     to: requester,
+  //     subject: `ONEderland Leave/WFH Request Rejected: ${name}`,
+  //     htmlBody: rejectionHtml,
+  //     name: "ONEderland Approval System"
+  //   });
+  //   const resultTemplate = HtmlService.createTemplateFromFile('result');
+  //   resultTemplate.status = "Rejected";
+  //   resultTemplate.message = "Rejection submitted successfully with notes.";
+  //   resultTemplate.color = "danger";
+  //   return resultTemplate.evaluate().setTitle("Rejection Submitted");
+  // }
+
+  // Reject With Notes ends Here
 
   if (action === 'review' && row && stage) {
     const template = HtmlService.createTemplateFromFile('rejectWithNotes');
@@ -189,8 +192,7 @@ function doGet(e) {
     return template.evaluate().setTitle('Reject with Notes');
   }
 
-
-  // If this function active, do not forget to uncomment the return processRejectionWithNote(row, stage, note); at line 95
+  // If this function active, do not forget to uncomment the return processRejectionWithNote(row, stage, note); at line 130
   // And comment all code inside if (action === 'review' && row && stage && note !== undefined) except reject prosses!
 
   // This function is to use rejection with notes, but not today, so I just need to commented this feature
@@ -257,11 +259,23 @@ function doGet(e) {
     return HtmlService.createHtmlOutputFromFile('terms').setTitle('Terms of Service');
   }
 
+  const email = e.parameter.track;
+  const showHistory = e.parameter.history === "true";
+  if (email) {
+    return HtmlService.createHtmlOutput(renderTrackingPage(email, showHistory)).setTitle("Track My Leave Request");
+  }
+
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
 
-    if (!e || !e.parameter || !e.parameter.action || !e.parameter.row) { // Simpler check for form display
-      return HtmlService.createTemplateFromFile('form').evaluate().setTitle("Leave Request Form");
+    // if (!e || !e.parameter || !e.parameter.action || !e.parameter.row) { // Simpler check for form display
+    //   return HtmlService.createTemplateFromFile('form').evaluate().setTitle("Leave Request Form");
+    // }
+
+    if (!e || !e.parameter || !e.parameter.action || !e.parameter.row) {
+      const template = HtmlService.createTemplateFromFile('form');
+      template.userEmail = Session.getActiveUser().getEmail(); // inject user email before evaluating
+      return template.evaluate().setTitle("Leave Request Form");
     }
 
     const rowIndex = parseInt(e.parameter.row, 10);
@@ -405,8 +419,8 @@ function doGet(e) {
 
         for (const row of balanceData) {
           if ((row[0] || "").toLowerCase() === requesterEmail) {
-            balance = parseInt(row[1]) || 0;
-            sickBalance = parseInt(row[2]) || 0;
+            balance = parseFloat(row[1]) || 0;
+            sickBalance = parseFloat(row[2]) || 0;
             break;
           }
         }
@@ -552,40 +566,44 @@ function doGet(e) {
               break;
           }
         } else { // Action is 'reject'
-          sheet.getRange(rowIndex, COLUMNS.STATUS).setValue('Rejected');
-          sheet.getRange(rowIndex, COLUMNS.STAGE).setValue('Rejected at ' + currentStage); // More specific
-          const rejectionNote = note || `Rejected by ${currentStage}.`;
+            sheet.getRange(rowIndex, COLUMNS.STATUS).setValue('Rejected');
+            sheet.getRange(rowIndex, COLUMNS.STAGE).setValue('Rejected at ' + currentStage); // More specific
+            const rejectionNote = note || `Rejected by ${currentStage}.`;
+            const values = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
 
-          const formattedStartDate = Utilities.formatDate(new Date(startDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
-          const formattedEndDate = Utilities.formatDate(new Date(endDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
-          const leaveDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+            const formattedStartDate = Utilities.formatDate(new Date(startDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
+            const formattedEndDate = Utilities.formatDate(new Date(endDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
+            const leaveDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
 
-          const rejectionHtml = `
-              <div style="font-family: Arial, sans-serif; color: #333;">
-                <h3 style="color: #dc3545;">❌ Leave/WFH Request Rejected - ${name}</h3>
-                <p><strong>Requester:</strong> ${name}</p>
-                <p><strong>Department:</strong> ${department}</p>
-                <p><strong>Leave Type:</strong> ${leaveType}</p>
-                <p><strong>Dates:</strong> ${formattedStartDate} to ${formattedEndDate} (${leaveDays} day${leaveDays > 1 ? 's' : ''})</p>
-                <p><strong>Reason:</strong> ${reasonText}</p>
-                <p><strong>Rejected at Stage:</strong> ${currentStage}</p>
-                <p><strong>Note:</strong> ${rejectionNote}</p>
-                <div style="margin-top: 20px; padding: 10px; background-color: #f8d7da; color: #721c24; border-left: 5px solid #f5c6cb;">
-                  <strong>Status:</strong> Rejected
-                </div>
-              </div>
-            `;
-            // Rejection email to requester
+            // Prepare the HTML using the same template
+            const template = HtmlService.createTemplateFromFile("finalNotification");
+            template.name = name;
+            template.leaveType = leaveType;
+            template.startDate = formattedStartDate;
+            template.endDate = formattedEndDate;
+            template.totalDays = leaveDays;
+            template.reason = reasonText;
+            template.finalDecision = "Rejected";
+            template.finalNote = rejectionNote;
+            template.updatedBalance = null; // No balance update on rejection
+
+            // Optional: Decision trail (if you want to show them in table)
+            template.spvStatus = values[COLUMNS.SPV_DECISION - 1] || "—";
+            template.hrStatus = values[COLUMNS.HR_DECISION - 1] || "—";
+            template.gmStatus = values[COLUMNS.GM_DECISION - 1] || "—";
+
+            const htmlBody = template.evaluate().getContent();
+
+            // Send rejection email
             GmailApp.sendEmail(
               requester,
               `ONEderland Leave/WFH Request Rejected: ${name}`,
-              '',
-              { 
-                htmlBody: rejectionHtml,
-                name: 'ONEderland Approval System'
+              '', // plain text fallback (leave blank if using only HTML)
+              {
+                htmlBody: htmlBody,
+                name: "ONEderland Approval System"
               }
             );
-
             nextStage = 'Final (Rejected)';
           }
     } finally {
@@ -792,8 +810,8 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
     if (!email) continue;
 
     if (email.toLowerCase() === requester) {
-      currentLeave = parseInt(leaveBal) || 0;
-      currentSick = parseInt(sickBal) || 0;
+      currentLeave = parseFloat(leaveBal) || 0;
+      currentSick = parseFloat(sickBal) || 0;
 
       if (decision === "Approved") {
         const isAnnual = leaveTypes.annual.includes(leaveType);
@@ -937,6 +955,9 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
 }
 
 function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, reason, stage) {
+  const scriptUrl = ScriptApp.getService().getUrl();
+  const trackingLink = `${scriptUrl}?track=${encodeURIComponent(email)}`;
+
   const htmlBody = `
     <div style="font-family:Arial,sans-serif;max-width:600px; margin:auto; border:1px solid #ddd; padding:20px;">
       <h2 style="color:#2c3e50; border-bottom:1px solid #eee; padding-bottom:10px;">Leave Request Submitted</h2>
@@ -949,10 +970,18 @@ function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, 
         <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;"><strong>Reason</strong></td><td style="padding:8px;border:1px solid #ddd;">${escapeHtml(reason)}</td></tr>
       </table>
       
+      <p>You can track your leave request status anytime using the link below:</p>
+      <p>
+        <a href="${trackingLink}" target="_blank" style="display:inline-block;padding:10px 15px;background-color:#3498db;color:#fff;text-decoration:none;border-radius:5px;">
+          Track My Leave Request
+        </a>
+      </p>
+
       <p>You will receive further email notifications as your request is processed.</p>
       <p style="color:#7f8c8d;font-size:0.9em;margin-top:20px;">Thank you,<br/>ONEderland Approval System</p>
     </div>
   `;
+
   try {
     MailApp.sendEmail({
       to: email,
@@ -966,6 +995,14 @@ function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, 
 }
 
 // Update Balance and detect balance on colums.email
+
+// Different beetwen parseInt and parseFloat
+// | Input    | `parseInt()` | `parseFloat()` | Recommended                        |
+// | -------- | ------------ | -------------- | ---------------------------------- |
+// | `"1.5"`  | `1`          | `1.5`          | `parseFloat` if you need decimal   |
+// | `"18,5"` | `18`         | `NaN`          | `parseFloat(...replace(',', '.'))` |
+// | `"100"`  | `100`        | `100`          | Either works                       |
+
 function getLeaveBalanceByEmail(email) {
   if (!email || typeof email !== 'string') {
     throw new Error("Invalid email passed to getLeaveBalanceByEmail");
@@ -1029,8 +1066,8 @@ function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType
   const requesterLower = requester.toLowerCase();
   for (const [email, leaveBal, sickBal] of balanceRange) {
     if (email && email.toLowerCase() === requesterLower) {
-      currentLeave = parseInt(leaveBal) || 0;
-      currentSick = parseInt(sickBal) || 0;
+      currentLeave = parseFloat(leaveBal) || 0;
+      currentSick = parseFloat(sickBal) || 0;
       break;
     }
   }
@@ -1063,3 +1100,119 @@ function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType
 
   return rejectionNote;
 }
+
+function formatDateShort(date, withTime = false) {
+  if (!(date instanceof Date)) date = new Date(date);
+  const options = { year: 'numeric', month: 'long', day: 'numeric' };
+  if (withTime) options.hour = '2-digit', options.minute = '2-digit';
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), withTime ? "MMMM d, yyyy HH:mm" : "MMMM d, yyyy");
+}
+
+function renderTrackingPage(email, showHistory = false) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Requests");
+  const data = sheet.getDataRange().getValues();
+  const rows = data.slice(1); // Skip header
+
+  const filteredRows = rows.filter(row => {
+    const emailMatch = row[COLUMNS.REQUESTER_EMAIL - 1] === email;
+    const isPending = row[COLUMNS.STATUS - 1].toLowerCase().includes("pending");
+    const hasToken = !!row[COLUMNS.SPV_TOKEN - 1];
+    return emailMatch && (showHistory ? true : (isPending && hasToken));
+  });
+
+  if (filteredRows.length === 0) {
+    return `
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+      <div class="container mt-5">
+        <div class="alert alert-warning">
+          <h4>No ${showHistory ? "leave history" : "active pending"} requests found for <code>${email}</code></h4>
+          <p>Either they have been approved/rejected or the email is incorrect.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  let html = `
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <div class="container mt-5">
+      <h2 class="mb-4">${showHistory ? "Leave Request History" : "Pending Leave Requests"} for <code>${email}</code></h2>
+      <table class="table table-bordered table-striped">
+        <thead class="table-light">
+          <tr>
+            <th>Submitted</th>
+            <th>Name</th>
+            <th>Leave Type</th>
+            <th>First Day</th>
+            <th>Last Day</th>
+            <th>Status</th>
+            <th>Stage</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  filteredRows.forEach(row => {
+    html += `
+      <tr>
+        <td>${formatDateShort(row[COLUMNS.TIMESTAMP - 1], true)}</td>
+        <td>${escapeHtml(row[COLUMNS.NAME - 1])}</td>
+        <td>${escapeHtml(row[COLUMNS.LEAVE_TYPE - 1])}</td>
+        <td>${formatDateShort(row[COLUMNS.START_DATE - 1])}</td>
+        <td>${formatDateShort(row[COLUMNS.END_DATE - 1])}</td>
+        <td>${escapeHtml(row[COLUMNS.STATUS - 1])}</td>
+        <td>${escapeHtml(row[COLUMNS.STAGE - 1])}</td>
+      </tr>
+    `;
+  });
+
+  // This feature still have a bug, need review in future!
+
+  // html += `
+  //       </tbody>
+  //     </table>
+  //     ${!showHistory ? `
+  //       <div class="text-end">
+  //         <a href="${ScriptApp.getService().getUrl()}?track=${encodeURIComponent(email)}&history=true" class="btn btn-outline-primary">View Full History</a>
+  //       </div>
+  //     ` : ''}
+  //   </div>
+  // `;
+
+  return html;
+}
+
+// We're using this 2 funtion to call a button in sheet!
+// Adding IMPORTRANGE from another spreadsheet
+function fillImportrangeFormula() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const startRow = 7;         // Start filling at row 7
+  const startCol = 28;        // Column AB (28)
+  const formulaPrefix = '=IMPORTRANGE("1rytHgB8Td08XUIQCkvcDEptQrj4F6GD1NotDrX9ulvE","Admin-Leave-Form!F';
+  const formulaSuffix = ':M';
+
+  for (let i = 0; i < 81; i++) {
+    const rowIndex = 3 + i;  // Start from row 3 in source sheet
+    const formula = `${formulaPrefix}${rowIndex}${formulaSuffix}${rowIndex}")`;
+    sheet.getRange(startRow + i, startCol).setFormula(formula);
+  }
+}
+
+// Adding Button to make more easy to fill a sync leave from original data
+// Upgraded version: sync data from AC, AF, AG to W, X, Y
+function syncLeaveNow() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const startRow = 7;
+  const endRow = 107;
+
+  for (let i = startRow; i <= endRow; i++) {
+    const formulaW = `=AC${i}`;
+    const formulaX = `=AF${i}`;
+    const formulaY = `=AG${i}`;
+
+    sheet.getRange(i, 23).setFormula(formulaW); // Column W
+    sheet.getRange(i, 24).setFormula(formulaX); // Column X
+    sheet.getRange(i, 25).setFormula(formulaY); // Column Y
+  }
+}
+  

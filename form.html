@@ -6,8 +6,8 @@
     Created for ONEderland Leave Request System
     If you need support, improvements, or bug fixes, please contact the creator.
 
-    Version: 7.17
-    Date: 2025-05-30
+    Version: 10
+    Date: July 26, 2025
   -->
   <base target="_top">
   <meta charset="UTF-8" />
@@ -87,7 +87,10 @@
 
       <div class="mb-3">
         <label for="email" class="form-label">Your Email</label>
-        <input type="email" id="email" placeholder="yourworking.email@onederland.com" class="form-control" required>
+        <input type="email" id="email" name="email" class="form-control" required value="<?= userEmail ?>" readonly>
+        <small class="form-text text-muted">
+            This must be shown as a your office work email.
+          </small>
       </div>
 
       <div class="mb-3">
@@ -383,8 +386,9 @@
 
           resultBody.innerHTML = `
             <div class="alert alert-danger text-dark">
-              <strong>Email Not Registered:</strong><br>
-              Your email <code>${email}</code> is not registered in our system.
+              <strong>Email Not Registered</strong><br><br>
+              Your email <code>${email}</code> is not registered in our system.<br>
+              Are you sure thats your office email?
             </div>`;
 
           resultModal.show();
