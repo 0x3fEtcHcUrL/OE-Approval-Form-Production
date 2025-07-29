@@ -261,7 +261,24 @@ function doGet(e) {
 
   const email = e.parameter.track;
   const showHistory = e.parameter.history === "true";
+
   if (email) {
+    const activeUser = Session.getActiveUser().getEmail();
+    if (activeUser && activeUser.toLowerCase() !== email.toLowerCase()) {
+      const html = `
+        <div class="container mt-5">
+          <div class="alert alert-danger shadow p-4 rounded" role="alert">
+            <h4 class="alert-heading">⛔ Access Denied</h4>
+            <p>You are not authorized to view this leave request history.</p>
+            <hr>
+            <p class="mb-0">Please make sure you're signed in with the correct Google account.</p>
+          </div>
+        </div>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+      `;
+      return HtmlService.createHtmlOutput(html).setTitle("Unauthorized Access");
+    }
+
     return HtmlService.createHtmlOutput(renderTrackingPage(email, showHistory)).setTitle("Track My Leave Request");
   }
 
@@ -1189,7 +1206,7 @@ function fillImportrangeFormula() {
   const startRow = 7;         // Start filling at row 7
   const startCol = 28;        // Column AB (28)
   const formulaPrefix = '=IMPORTRANGE("1rytHgB8Td08XUIQCkvcDEptQrj4F6GD1NotDrX9ulvE","Admin-Leave-Form!F';
-  const formulaSuffix = ':M';
+  const formulaSuffix = ':P';
 
   for (let i = 0; i < 81; i++) {
     const rowIndex = 3 + i;  // Start from row 3 in source sheet
@@ -1215,4 +1232,3 @@ function syncLeaveNow() {
     sheet.getRange(i, 25).setFormula(formulaY); // Column Y
   }
 }
-  
