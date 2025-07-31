@@ -268,10 +268,16 @@ function doGet(e) {
       const html = `
         <div class="container mt-5">
           <div class="alert alert-danger shadow p-4 rounded" role="alert">
-            <h4 class="alert-heading">⛔ Access Denied</h4>
-            <p>You are not authorized to view this leave request history.</p>
-            <hr>
-            <p class="mb-0">Please make sure you're signed in with the correct Google account.</p>
+            <div class="col-md-8">
+              <h4 class="alert-heading">⛔ Access Denied</h4>
+                <p>You are not authorized to view this leave request history.</p>
+                <hr>
+                <p class="mb-0">
+                Please make sure you're signed in with the correct Google account.<br><br>
+                If you need to change accounts, click the link above and sign in with the correct email.<br>
+                <a href="https://accounts.google.com/AccountChooser" target="_blank" rel="noopener noreferrer" class="btn btn-link p-0 text-decoration-none">Switch Google Account</a>
+                </p>
+            </div>
           </div>
         </div>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -356,6 +362,8 @@ function doGet(e) {
         const stageParam = e.parameter.stage; // spv/hr/gm
 
         // Validate inputs
+        // This is a critical check to ensure the token and stage are provided
+        // Also this happen when the sheet 'share link' is changed to visitor. The Correct one is 'Editor'.
         if (!tokenToUse || !tokenColumn || !stageParam) {
           return showErrorTokenPage("Unauthorized Access", "Hey Stranger, what are you doing here?");
         }
@@ -604,7 +612,7 @@ function doGet(e) {
             template.finalNote = rejectionNote;
             template.updatedBalance = null; // No balance update on rejection
 
-            // Optional: Decision trail (if you want to show them in table)
+            // Optional: Decision trail
             template.spvStatus = values[COLUMNS.SPV_DECISION - 1] || "—";
             template.hrStatus = values[COLUMNS.HR_DECISION - 1] || "—";
             template.gmStatus = values[COLUMNS.GM_DECISION - 1] || "—";
@@ -1208,7 +1216,7 @@ function fillImportrangeFormula() {
   const formulaPrefix = '=IMPORTRANGE("1rytHgB8Td08XUIQCkvcDEptQrj4F6GD1NotDrX9ulvE","Admin-Leave-Form!F';
   const formulaSuffix = ':P';
 
-  for (let i = 0; i < 81; i++) {
+  for (let i = 0; i < 107; i++) { // Amount of employee is === 100 users.
     const rowIndex = 3 + i;  // Start from row 3 in source sheet
     const formula = `${formulaPrefix}${rowIndex}${formulaSuffix}${rowIndex}")`;
     sheet.getRange(startRow + i, startCol).setFormula(formula);
