@@ -6,9 +6,10 @@ RUN a2enmod rewrite
 # Copy your app
 COPY ./index.html /var/www/html/
 COPY ./.htaccess /var/www/html/
+COPY ./down /var/www/html/down
 COPY ./privacy.html /var/www/html/
 COPY ./terms.html /var/www/html/
-COPY ./maintenance.html /var/www/html/
+COPY ./testing.html /var/www/html/
 COPY ./bgvideos-leaveform.mp4 /var/www/html
 
 # Allow .htaccess overrides
