@@ -21,7 +21,7 @@ const CONFIG = {
     "Neurone Recruitment": "cesco.wowor@neuronerecruitment.com.au",
     "ONEderland Consulting": "ayu.karina@onederland.com.au",
     "ONEderland Enterprise Finance": "sanistya.onederland@gmail.com",
-    "ONEderland Enterprise HRGA": "dyah.onederland@gmail.com", // SPV for HR tasks, if applicable
+    "ONEderland Enterprise HRGA": "dyah.onederland@gmail.com", 
     "PeraONE Xperience": "dyah.onederland@gmail.com", // SPV sementara ke HR, karena belom ada SPV
     "SnG OE": "suma.onederland@gmail.com"
   }
@@ -51,9 +51,12 @@ const COLUMNS = {
   SPV_TOKEN: 20,      // Column T
   HR_TOKEN: 21,       // Column U
   GM_TOKEN: 22,       // Column V
-  EMAIL: 23,          // Column W
-  LEAVE: 24,          // Column X
-  SICK: 25            // Column Y
+  EMP_EMAIL: 23,      // Column W
+  ANNUAL_BALANCE: 24, // Column X
+  SICK_BALANCE: 25    // Column Y
+  // BEREA_BALANCE: 26     // Column Z
+  // MARRIAGE_BALANCE: 27  // Column AA
+  // MATERNITY_BALANCE: 28 // Column AB
 };
 
 /**
@@ -69,8 +72,29 @@ function parseDMYDate(dateString) {
     // new Date(year, monthIndex, day)
     return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
   }
-  return null; // Or throw an error, or return an invalid Date
+  return null;
 }
+
+// Update Obfuscated code parseDMYDate
+
+// function _0xd1a5(){return [
+//   'split', 'string', 'length', 'parseInt', 'Date'
+// ];}
+// const _obfD = function(i){ return _0xd1a5()[i]; };
+
+// function _obfDate(d){
+//   if (!d || typeof d !== _obfD(1)) return null;
+//   const p = d[_obfD(0)]("-");
+//   if (p[_obfD(2)] === 3) {
+//     return new window[_obfD(4)](
+//       window[_obfD(3)](p[2], 10),
+//       window[_obfD(3)](p[1], 10) - 1,
+//       window[_obfD(3)](p[0], 10)
+//     );
+//   }
+//   return null;
+// }
+
 
 // Helper function to format date objects to string
 function formatDate(dateObj) {
@@ -96,8 +120,12 @@ function generateRandomToken(length = 16) {
   for (let i = 0; i < length; i++) {
     token += chars[Math.floor(Math.random() * chars.length)];
   }
+  Logger.log(`Token Created: ${token}`);
   return token;
 }
+
+// Get email of current Google user
+const currentUserEmail = Session.getActiveUser().getEmail().toLowerCase();
 
 function showErrorTokenPage(title, message) {
   const html = `
@@ -117,6 +145,7 @@ function showErrorTokenPage(title, message) {
       </body>
     </html>
   `;
+  Logger.log(`Error Page Rendered for ${currentUserEmail} - ${title}`);
   return HtmlService.createHtmlOutput(html).setTitle(title);
 }
 
@@ -186,11 +215,17 @@ function doGet(e) {
   // Reject With Notes ends Here
 
   if (action === 'review' && row && stage) {
-    const template = HtmlService.createTemplateFromFile('rejectWithNotes');
-    template.row = row;
-    template.stage = stage;
-    return template.evaluate().setTitle('Reject with Notes');
-  }
+  Logger.log(`Action: review`);
+  Logger.log(`Row: ${row}`);
+  Logger.log(`Stage: ${stage}`);
+
+  const template = HtmlService.createTemplateFromFile('rejectWithNotes');
+  template.row = row;
+  template.stage = stage;
+
+  Logger.log(`Rendering rejectWithNotes template for row ${row} at stage ${stage}`);
+  return template.evaluate().setTitle('Reject with Notes');
+}
 
   // If this function active, do not forget to uncomment the return processRejectionWithNote(row, stage, note); at line 130
   // And comment all code inside if (action === 'review' && row && stage && note !== undefined) except reject prosses!
@@ -282,9 +317,11 @@ function doGet(e) {
         </div>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
       `;
+      Logger.log(`Access Denied: Active user ${activeUser} tried accessing ${email}`);
       return HtmlService.createHtmlOutput(html).setTitle("Unauthorized Access");
     }
 
+    Logger.log(`Access Granted: Showing history for ${activeUser}`);
     return HtmlService.createHtmlOutput(renderTrackingPage(email, showHistory)).setTitle("Track My Leave Request");
   }
 
@@ -330,18 +367,42 @@ function doGet(e) {
         currentStage = sheet.getRange(rowIndex, COLUMNS.STAGE).getValue();
         const currentStatus = sheet.getRange(rowIndex, COLUMNS.STATUS).getValue();
 
-        if (currentStatus !== 'Pending' && currentStatus !== '') { // '' might be for old entries before status was set
-             // Allow processing if stage indicates it's waiting for this specific action, even if status was updated.
-             // More robust check: has this specific stage already been decided?
-             // For now, if status is Approved/Rejected, consider it final.
-            if (currentStatus === 'Approved' || currentStatus === 'Rejected') {
-                const html = HtmlService.createTemplateFromFile('result');
-                html.action = currentStatus.toLowerCase();
-                html.stage = currentStage;
-                html.note = sheet.getRange(rowIndex, COLUMNS.NOTE).getValue(); // Notes error.
-                html.nextStage = "Final";
-                return html.evaluate().setTitle("Request Processed");
+        // if (currentStatus !== 'Pending' && currentStatus !== '') { // '' might be for old entries before status was set
+        //      // Allow processing if stage indicates it's waiting for this specific action, even if status was updated.
+        //      // More robust check: has this specific stage already been decided?
+        //      // For now, if status is Approved/Rejected, consider it final.
+        //     if (currentStatus === 'Approved' || currentStatus === 'Rejected') {
+        //         const html = HtmlService.createTemplateFromFile('result');
+        //         html.action = currentStatus.toLowerCase();
+        //         html.stage = currentStage;
+        //         html.note = sheet.getRange(rowIndex, COLUMNS.NOTE).getValue(); // Notes error.
+        //         html.nextStage = "Final";
+        //         return html.evaluate().setTitle("Request Processed");
+        //     }
+        // }  ========================= // Updated new code is in line 360! =========================
+
+        if (currentStatus !== 'Pending' && currentStatus !== '') {
+          Logger.log(`Request at row ${rowIndex} has status '${currentStatus}' and is currently at stage '${currentStage}'`);
+
+          // If status is Approved or Rejected, consider it final and stop further processing
+          if (currentStatus === 'Approved' || currentStatus === 'Rejected') {
+            const html = HtmlService.createTemplateFromFile('result');
+            html.action = currentStatus.toLowerCase();
+            html.stage = currentStage;
+
+            // Try/catch in case note is blank or access fails
+            try {
+              html.note = sheet.getRange(rowIndex, COLUMNS.NOTE).getValue();
+            } catch (error) {
+              Logger.log(`Failed to fetch note for row ${rowIndex}: ${error}`);
+              html.note = '';
             }
+
+            html.nextStage = "Final";
+
+            Logger.log(`Returning result page with status '${currentStatus}' for row ${rowIndex}`);
+            return html.evaluate().setTitle("Request Processed");
+          }
         }
 
         // Get the stageToken map
@@ -365,6 +426,7 @@ function doGet(e) {
         // This is a critical check to ensure the token and stage are provided
         // Also this happen when the sheet 'share link' is changed to visitor. The Correct one is 'Editor'.
         if (!tokenToUse || !tokenColumn || !stageParam) {
+          Logger.log(`[TOKEN CHECK] Unauthorized Access - Missing token/column/stage: tokenToUse=${tokenToUse}, tokenColumn=${tokenColumn}, stageParam=${stageParam}`);
           return showErrorTokenPage("Unauthorized Access", "Hey Stranger, what are you doing here?");
         }
 
@@ -389,13 +451,16 @@ function doGet(e) {
         else return showErrorTokenPage("Invalid Stage", "Unknown stage: " + stageParam);
 
         if (currentUserEmail !== expectedApprover) {
+          Logger.log(`[TOKEN CHECK] Unauthorized Approver - Expected: ${expectedApprover}, Got: ${currentUserEmail}`);
           return showErrorTokenPage("Unauthorized Approver", `Whoopzz Whoopzz <code>${currentUserEmail}</code>, <br>You're not authorized to approve this request<br>for stage <b>${currentStage}</b>.`);
         }
 
         // Check saved token
         const savedToken = sheet.getRange(rowIndex, tokenColumn).getValue();
+        Logger.log(`[TOKEN CHECK] Comparing tokens - savedToken: ${savedToken}, tokenToUse: ${tokenToUse}, stage: ${validStage} vs ${tokenColumn}`);
 
         if (validStage !== tokenColumn || savedToken !== tokenToUse || savedToken.endsWith("_used")) {
+          Logger.log(`[TOKEN CHECK] Token Mismatch or Already Used - validStage: ${validStage}, tokenColumn: ${tokenColumn}, token: ${savedToken}`);
           return showErrorTokenPage(
             "You've Already Responded",
             `Looks like you've already taken action on this request.<br>Current stage: <strong>${currentStage}</strong>.`
@@ -404,6 +469,7 @@ function doGet(e) {
 
         // Block re-approval if already finalized
         if (["Approved", "Rejected"].includes(currentStatus)) {
+          Logger.log(`[FINALIZED CHECK] Already Finalized - Status: ${currentStatus}, Stage: ${currentStage}`);
           const html = HtmlService.createTemplateFromFile('result');
           html.action = currentStatus.toLowerCase();
           html.stage = currentStage;
@@ -413,6 +479,7 @@ function doGet(e) {
         }
 
         // Invalidate the token after use
+        Logger.log(`[TOKEN INVALIDATE] Marking token as used: ${tokenToUse}_used`);
         sheet.getRange(rowIndex, tokenColumn).setValue(`${tokenToUse}_used`);
 
         name = sheet.getRange(rowIndex, COLUMNS.NAME).getValue();
@@ -433,9 +500,9 @@ function doGet(e) {
         const balanceStartRow = 7;
         const balanceData = sheet.getRange(
           balanceStartRow,
-          COLUMNS.EMAIL, // column W (23)
+          COLUMNS.EMP_EMAIL, // column W (23)
           sheet.getLastRow() - (balanceStartRow - 1),
-          COLUMNS.SICK - COLUMNS.EMAIL + 1 // should be 3 columns (W to Y)
+          COLUMNS.SICK_BALANCE - COLUMNS.EMP_EMAIL + 1 // should be 3 columns (W to Y)
         ).getValues();
 
         const requesterEmail = requester.toLowerCase();
@@ -503,24 +570,32 @@ function doGet(e) {
 
           switch(currentStage) {
             case "SPV Approval":
+              Logger.log(`Processing SPV Approval for row ${rowIndex}, leaveType: ${leaveType}`);
+
               if (leaveType === "Working From Home (WFH)") {
+                Logger.log(`Auto-finalizing WFH request. Finalizing request as 'Approved by SPV'`);
                 finalizeRequest(rowIndex, decision, note, name, requester, "Approved by SPV");
               } else {
                 nextStage = "HR Review";
                 sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
+                Logger.log(`Moving to next stage: ${nextStage}`);
 
                 // Generate a new token for HR
                 const hrToken = generateRandomToken();
+                Logger.log(`Generated HR Token: ${hrToken}`);
 
                 // Save token in the sheet in HR_TOKEN column
                 sheet.getRange(rowIndex, COLUMNS.HR_TOKEN).setValue(hrToken);
+                Logger.log(`Saved HR Token to sheet at row ${rowIndex}, column ${COLUMNS.HR_TOKEN}`);
 
-                // Pass same token to the email function
+                // Send approval email to HR
                 sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.HR_EMAIL, nextStage, rowIndex, hrToken);
+                Logger.log(`Sent approval email to HR: ${CONFIG.HR_EMAIL} for row ${rowIndex}`);
               }
               break;
 
             case "HR Review":
+              Logger.log("Stage: HR Review");
               // Best Use Cases Logic!
               // | **Submitter** | **Expected Approval Flow**            | **Expected Reject Flow**   | **Acc Flow** | **Reject Flow** |
               // | ------------- | ------------------------------------- | -------------------------- | ------------ | --------------- |
@@ -544,63 +619,88 @@ function doGet(e) {
               const isRequesterHR = requester.toLowerCase() === CONFIG.HR_EMAIL.toLowerCase();
               const needsGM = (leaveType === "Unpaid Leave") || isRequesterSPV;
 
+              Logger.log(`Requester: ${requester}`);
+              Logger.log(`Leave Type: ${leaveType}`);
+              Logger.log(`Is Requester SPV? ${isRequesterSPV}`);
+              Logger.log(`Is Requester HR? ${isRequesterHR}`);
+              Logger.log(`Needs GM? ${needsGM}`);
+
               if (leaveType === "Working From Home (WFH)") {
                 if (isRequesterHR) {
-                  // WFH: HR submitted → GM next
+                  Logger.log("WFH submitted by HR → escalate to GM Review");
                   nextStage = "GM Review";
-                    sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
-                    const gmToken = generateRandomToken();
-                    sheet.getRange(rowIndex, COLUMNS.GM_TOKEN).setValue(gmToken);
-                    sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.GM_EMAIL, nextStage, rowIndex, gmToken);
+                  sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
+                  
+                  const gmToken = generateRandomToken();
+                  Logger.log(`Generated GM Token: ${gmToken}`);
+                  sheet.getRange(rowIndex, COLUMNS.GM_TOKEN).setValue(gmToken);
+
+                  sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.GM_EMAIL, nextStage, rowIndex, gmToken);
+                  Logger.log("GM approval email sent");
                 } else {
-                  // WFH: SPV submitted → HR → Reporting
+                  Logger.log("WFH submitted by SPV → finalize after HR Review");
                   finalizeRequest(rowIndex, decision, note, name, requester, "Approved by HR");
                 }
               } else {
-                // Regular flow
                 nextStage = needsGM ? "GM Review" : "Final";
+                Logger.log(`Next Stage: ${nextStage}`);
                 sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
+                
                 const gmToken = generateRandomToken();
+                Logger.log(`Generated GM Token: ${gmToken}`);
                 sheet.getRange(rowIndex, COLUMNS.GM_TOKEN).setValue(gmToken);
 
                 if (needsGM) {
+                  Logger.log("Sending request to GM for final review");
                   sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.GM_EMAIL, nextStage, rowIndex, gmToken);
+                  Logger.log("GM approval email sent");
                 } else {
+                  Logger.log("No GM needed → finalizing request");
                   finalizeRequest(rowIndex, decision, note, name, requester, "Approved by HR");
                 }
               }
               break;
 
             case "GM Review":
-              //const isRequesterHR = requester === CONFIG.HR_EMAIL;
+              Logger.log("Stage: GM Review");
+              Logger.log("Leave Type: " + leaveType);
+              Logger.log("Requester: " + requester);
+
               if (leaveType === "Working From Home (WFH)") {
-                // WFH: HR submitted → GM → Reporting
+                Logger.log("WFH submitted → GM → Reporting");
                 finalizeRequest(rowIndex, decision, note, name, requester, "Approved by GM");
               } else {
+                Logger.log("Non-WFH → GM → Finalization");
                 nextStage = "Final";
-                sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage); // Though it's final, setting stage to 'Final' or 'Completed'
+                sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
                 finalizeRequest(rowIndex, decision, note, name, requester, "Approved by GM");
               }
               break;
 
             default:
-              // Should not happen if flow is correct
+              Logger.log("Unexpected Stage: " + currentStage);
               nextStage = "Error in Workflow";
-              sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage); 
+              sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
               finalizeRequest(rowIndex, "Error", "Workflow error at stage: " + stage, name, requester, "Workflow Error");
               break;
           }
         } else { // Action is 'reject'
+            Logger.log(`Rejecting request at row ${rowIndex} during stage: ${currentStage}`);
+
             sheet.getRange(rowIndex, COLUMNS.STATUS).setValue('Rejected');
-            sheet.getRange(rowIndex, COLUMNS.STAGE).setValue('Rejected at ' + currentStage); // More specific
+            sheet.getRange(rowIndex, COLUMNS.STAGE).setValue('Rejected at ' + currentStage);
+
             const rejectionNote = note || `Rejected by ${currentStage}.`;
+            Logger.log(`Rejection note: ${rejectionNote}`);
+
             const values = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
 
             const formattedStartDate = Utilities.formatDate(new Date(startDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
             const formattedEndDate = Utilities.formatDate(new Date(endDate), Session.getScriptTimeZone(), "dd-MM-yyyy");
             const leaveDays = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
 
-            // Prepare the HTML using the same template
+            Logger.log(`Leave dates: ${formattedStartDate} to ${formattedEndDate}, total ${leaveDays} day(s)`);
+
             const template = HtmlService.createTemplateFromFile("finalNotification");
             template.name = name;
             template.leaveType = leaveType;
@@ -610,16 +710,14 @@ function doGet(e) {
             template.reason = reasonText;
             template.finalDecision = "Rejected";
             template.finalNote = rejectionNote;
-            template.updatedBalance = null; // No balance update on rejection
+            template.updatedBalance = null;
 
-            // Optional: Decision trail
             template.spvStatus = values[COLUMNS.SPV_DECISION - 1] || "—";
             template.hrStatus = values[COLUMNS.HR_DECISION - 1] || "—";
             template.gmStatus = values[COLUMNS.GM_DECISION - 1] || "—";
 
             const htmlBody = template.evaluate().getContent();
 
-            // Send rejection email
             GmailApp.sendEmail(
               requester,
               `ONEderland Leave/WFH Request Rejected: ${name}`,
@@ -629,7 +727,11 @@ function doGet(e) {
                 name: "ONEderland Approval System"
               }
             );
+
+            Logger.log(`Rejection email sent to: ${requester}`);
+
             nextStage = 'Final (Rejected)';
+            Logger.log(`Stage set to: ${nextStage}`);
           }
     } finally {
           lock.releaseLock();
@@ -640,6 +742,7 @@ function doGet(e) {
     html.stage = currentStage; // The stage that just made the decision
     html.note = note || (action === 'reject' ? "Rejected by " + currentStage : "Approved by " + currentStage);
     html.nextStage = nextStage;
+    Logger.log(`[${action.toUpperCase()}] by ${currentStage} | Requester: ${requester} | Note: ${html.note} | Next: ${nextStage}`);
     return html.evaluate().setTitle("Request Processed");
 
   } catch (err) {
@@ -691,6 +794,7 @@ function doGet(e) {
           </body>
         </html>
       `;
+      Logger.log(`Oops! Something went wrong. ${escapeHtml(err.toString())} - ${escapeHtml(stackLine)}`);
       return HtmlService.createHtmlOutput(errorHtml).setTitle("Processing Error");
     }
   }
@@ -706,7 +810,7 @@ function submitRequest(name, email, department, leaveType, startDate, endDate, r
     const lastDate = parseDMYDate(endDate);
 
     if (!firstDate || !lastDate) {
-      Logger.log("Invalid date format received: " + startDate + ", " + endDate);
+      Logger.log(`Invalid date format received: ${startDate}, ${endDate}`);
       throw new Error("Invalid date format. Please use DD-MM-YYYY.");
     }
 
@@ -716,6 +820,7 @@ function submitRequest(name, email, department, leaveType, startDate, endDate, r
 
     // Determine if the requester is the SPV of their department
     // Javascript?? this is Jawascript hahahahaha
+    
     const ikiEmailnyaSPVngertiOra = (email.toLowerCase() === spvEmail.toLowerCase());
     const ikiEmailnyaGMngertiOra = (email.toLowerCase() === gmEmail.toLowerCase());
     const ikiEmailnyaHRngertiOra = (email.toLowerCase() === hrEmail.toLowerCase());
@@ -826,7 +931,7 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
   };
 
   const balanceStartRow = 7;
-  const balanceRange = sheet.getRange(balanceStartRow, COLUMNS.EMAIL, sheet.getLastRow() - (balanceStartRow - 1), 3).getValues();
+  const balanceRange = sheet.getRange(balanceStartRow, COLUMNS.EMP_EMAIL, sheet.getLastRow() - (balanceStartRow - 1), 3).getValues();
   const requester = requesterEmail.toLowerCase();
   let currentLeave = 0, currentSick = 0, updatedBalance = null;
 
@@ -855,11 +960,11 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
         const rowOffset = balanceStartRow + i;
         if (isAnnual) {
           const newLeave = Math.max(0, currentLeave - days);
-          sheet.getRange(rowOffset, COLUMNS.LEAVE).setValue(newLeave);
+          sheet.getRange(rowOffset, COLUMNS.ANNUAL_BALANCE).setValue(newLeave);
           updatedBalance = { leave: newLeave, sick: currentSick };
         } else if (isSick) {
           const newSick = Math.max(0, currentSick - days);
-          sheet.getRange(rowOffset, COLUMNS.SICK).setValue(newSick);
+          sheet.getRange(rowOffset, COLUMNS.SICK_BALANCE).setValue(newSick);
           updatedBalance = { leave: currentLeave, sick: newSick };
         }
       }
@@ -933,6 +1038,7 @@ function generateCalendarLink(title, startDate, endDate, description) {
   const details = encodeURIComponent(description);
   const calTitle = encodeURIComponent(title);
 
+  Logger.log(`Calender Created to: ${title} for ${startDate} - ${endDate}`);
   return `https://www.google.com/calendar/render?action=TEMPLATE&text=${calTitle}&dates=${start}/${end}&details=${details}`;
 }
 
@@ -1015,7 +1121,7 @@ function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, 
       name: "ONEderland Approval System" 
     });
   } catch (e) {
-    Logger.log("Failed to send confirmation email to " + email + ". Error: " + e.toString());
+    Logger.log(`Failed to send confirmation email to ${email}. Error: ${e.toString}`);
   }
 }
 
@@ -1030,26 +1136,36 @@ function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, 
 
 function getLeaveBalanceByEmail(email) {
   if (!email || typeof email !== 'string') {
+    Logger.log("[ERROR] Invalid email input: %s", email);
     throw new Error("Invalid email passed to getLeaveBalanceByEmail");
   }
+
+  Logger.log("[INFO] Fetching leave balance for: %s", email);
 
   const sheet = SpreadsheetApp.getActive().getSheetByName("Requests");
   const data = sheet.getDataRange().getValues();
   const inputEmail = email.trim().toLowerCase();
 
   for (let i = 1; i < data.length; i++) {
-    const rowEmailRaw = data[i][COLUMNS.EMAIL - 1];
+    const rowEmailRaw = data[i][COLUMNS.EMP_EMAIL - 1];
     if (!rowEmailRaw) continue;
 
     const rowEmail = rowEmailRaw.toString().trim().toLowerCase();
 
     if (rowEmail === inputEmail) {
+      const leaveBalance = parseFloat(data[i][COLUMNS.ANNUAL_BALANCE - 1]) || 0;
+      const sickBalance = parseFloat(data[i][COLUMNS.SICK_BALANCE - 1]) || 0;
+
+      Logger.log("[SUCCESS] Found balance for %s: Leave = %s, Sick = %s", inputEmail, leaveBalance, sickBalance);
+
       return {
-        leave: parseFloat(data[i][COLUMNS.LEAVE - 1]) || 0,
-        sick: parseFloat(data[i][COLUMNS.SICK - 1]) || 0
+        leave: leaveBalance,
+        sick: sickBalance
       };
     }
   }
+
+  Logger.log("[WARN] No balance found for email: %s", inputEmail);
 
   // ❗️Email not found
   return null;
@@ -1085,7 +1201,7 @@ function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType
   // Fetch current leave balances from "Request" sheet (W: email, X: leave, Y: sick)
   const balanceSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
   const balanceStartRow = 7;
-  const balanceRange = balanceSheet.getRange(balanceStartRow, COLUMNS.EMAIL, balanceSheet.getLastRow() - (balanceStartRow - 1), 3).getValues();
+  const balanceRange = balanceSheet.getRange(balanceStartRow, COLUMNS.EMP_EMAIL, balanceSheet.getLastRow() - (balanceStartRow - 1), 3).getValues();
 
   let currentLeave = 0, currentSick = 0;
   const requesterLower = requester.toLowerCase();
@@ -1204,39 +1320,94 @@ function renderTrackingPage(email, showHistory = false) {
   //   </div>
   // `;
 
+  Logger.log(`Showing Tracking History for ${email}.`);
   return html;
 }
 
 // We're using this 2 funtion to call a button in sheet!
 // Adding IMPORTRANGE from another spreadsheet
-function fillImportrangeFormula() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const startRow = 7;         // Start filling at row 7
-  const startCol = 28;        // Column AB (28)
-  const formulaPrefix = '=IMPORTRANGE("1rytHgB8Td08XUIQCkvcDEptQrj4F6GD1NotDrX9ulvE","Admin-Leave-Form!F';
-  const formulaSuffix = ':P';
 
-  for (let i = 0; i < 107; i++) { // Amount of employee is === 100 users.
-    const rowIndex = 3 + i;  // Start from row 3 in source sheet
-    const formula = `${formulaPrefix}${rowIndex}${formulaSuffix}${rowIndex}")`;
-    sheet.getRange(startRow + i, startCol).setFormula(formula);
+// function fillImportrangeFormula() {
+//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+//   const startRow = 7;         // Start filling at row 7
+//   const startCol = 31;        // Column AE (31)
+//   const formulaPrefix = '=IMPORTRANGE("1rytHgB8Td08XUIQCkvcDEptQrj4F6GD1NotDrX9ulvE","Admin-Leave-Form!I';
+//   const formulaSuffix = ':S';
+
+//   for (let i = 0; i < 107; i++) { // Amount of employee is === 100 users.
+//     const rowIndex = 3 + i;  // Start from row 3 in source sheet
+//     const formula = `${formulaPrefix}${rowIndex}${formulaSuffix}${rowIndex}")`;
+//     sheet.getRange(startRow + i, startCol).setFormula(formula);
+//   }
+// }
+
+// Adding Button to make more easy to fill a sync leave from original data
+// Upgraded version: sync data from AC, AF, AG to W, X, Y || AI - AM
+
+// function syncLeaveNow() {
+//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+//   const startRow = 7;
+//   const endRow = 107;
+
+//   for (let i = startRow; i <= endRow; i++) {
+//     const formulaW = `=AF${i}`;
+//     const formulaX = `=AI${i}`;
+//     const formulaY = `=AJ${i}`;
+//     const formulaZ = `=AK${i}`;
+//     const formulaAA = `=AL${i}`;
+//     const formulaAB = `=AM${i}`;
+
+//     sheet.getRange(i, 23).setFormula(formulaW); // Column W
+//     sheet.getRange(i, 24).setFormula(formulaX); // Column X
+//     sheet.getRange(i, 25).setFormula(formulaY); // Column Y
+//     sheet.getRange(i, 26).setFormula(formulaZ); // Column Z
+//     sheet.getRange(i, 27).setFormula(formulaAA); // Column AA
+//     sheet.getRange(i, 28).setFormula(formulaAB); // Column AB
+//   }
+// }
+
+// We're using this 2 funtion to call a button in sheet!
+// Adding IMPORTRANGE from another spreadsheet
+
+// To all IT/Webdev in ONEderland Enterprise, if found this obfuscated function, hell yeah.
+// You're closer to migrain ~xD wkwkwkwkwk
+
+function _0xb0f5(){return [
+  'getActiveSpreadsheet',
+  'getActiveSheet',
+  'getRange',
+  'setFormula',
+  '=IMPORTRANGE("1rytHgB8Td08XUIQCkvcDEptQrj4F6GD1NotDrX9ulvE","Admin-Leave-Form!I',
+  ':S',
+  '")'
+];}
+
+const _obf = function(i){ return _0xb0f5()[i]; };
+
+function _f1ll() {
+  const ss = SpreadsheetApp[_obf(0)]();
+  const sheet = ss[_obf(1)]();
+  const r0 = 7, c0 = 31;
+
+  for (let i = 0; i < 107; i++) {
+    const r = 3 + i;
+    const formula = _obf(4) + r + _obf(5) + r + _obf(6);
+    sheet[_obf(2)](r0 + i, c0)[_obf(3)](formula);
   }
 }
 
 // Adding Button to make more easy to fill a sync leave from original data
-// Upgraded version: sync data from AC, AF, AG to W, X, Y
-function syncLeaveNow() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const startRow = 7;
-  const endRow = 107;
 
-  for (let i = startRow; i <= endRow; i++) {
-    const formulaW = `=AC${i}`;
-    const formulaX = `=AF${i}`;
-    const formulaY = `=AG${i}`;
+function _0x2ab2(){const _0x5e0f6f=['getActiveSheet','getActiveSpreadsheet','setFormula','getRange','AF','AI','AJ','AK','AL','AM'];_0x2ab2=function(){return _0x5e0f6f;};return _0x2ab2();}
+const _0xabc=function(_0x1e1e12){return _0x2ab2()[_0x1e1e12];};
 
-    sheet.getRange(i, 23).setFormula(formulaW); // Column W
-    sheet.getRange(i, 24).setFormula(formulaX); // Column X
-    sheet.getRange(i, 25).setFormula(formulaY); // Column Y
+function _0xsync() {
+  const s = SpreadsheetApp[_0xabc(1)]()[_0xabc(0)]();
+  const f = [_0xabc(4),_0xabc(5),_0xabc(6),_0xabc(7),_0xabc(8),_0xabc(9)]; // 'AF' to 'AM'
+
+  for (let r = 7; r <= 107; r++) {
+    for (let c = 0; c < f.length; c++) {
+      s[_0xabc(3)](r, 23 + c)[_0xabc(2)]('=' + f[c] + r);
+    }
   }
 }
