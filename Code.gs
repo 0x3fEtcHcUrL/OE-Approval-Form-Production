@@ -4,8 +4,8 @@
  * 
  * Contact the creator for support, feature requests, or issues.
  *
- * Version: 10
- * Date: July 26, 2025
+ * Version: 16
+ * Date: September 13, 2025
  */
 
 // Global Emails Configuration
@@ -53,10 +53,11 @@ const COLUMNS = {
   GM_TOKEN: 22,       // Column V
   EMP_EMAIL: 23,      // Column W
   ANNUAL_BALANCE: 24, // Column X
-  SICK_BALANCE: 25    // Column Y
+  SICK_BALANCE: 25,    // Column Y
   // BEREA_BALANCE: 26     // Column Z
   // MARRIAGE_BALANCE: 27  // Column AA
   // MATERNITY_BALANCE: 28 // Column AB
+  REF_ID: 43
 };
 
 /**
@@ -64,6 +65,17 @@ const COLUMNS = {
  * @param {string} dateString The date string in "d-m-Y".
  * @return {Date} A JavaScript Date object.
  */
+
+function generateReferenceID() {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+  let randomLetters = "";
+  for (let i = 0; i < 7; i++) {
+    randomLetters += letters.charAt(Math.floor(Math.random() * letters.length));
+  }
+
+  Logger.log(`Token Created: ONE-${randomLetters}/`);
+  return `ONE-${randomLetters}/`;
+}
 
 function parseDMYDate(dateString) {
   if (!dateString || typeof dateString !== 'string') return null;
@@ -287,10 +299,14 @@ function doGet(e) {
   // }
   
   if (page === 'privacy') {
+    const activeUser = Session.getActiveUser().getEmail();
+    Logger.log(`[INFO]: Active user ${activeUser} read Privacy Policy Page`);
     return HtmlService.createHtmlOutputFromFile('privacy').setTitle('Privacy Policy');
   }
 
   if (page === 'terms') {
+    const activeUser = Session.getActiveUser().getEmail();
+    Logger.log(`[INFO]: Active user ${activeUser} read Terms of Usage Page`);
     return HtmlService.createHtmlOutputFromFile('terms').setTitle('Terms of Service');
   }
 
@@ -326,6 +342,7 @@ function doGet(e) {
   }
 
   try {
+    const activeUser = Session.getActiveUser().getEmail();
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
 
     // if (!e || !e.parameter || !e.parameter.action || !e.parameter.row) { // Simpler check for form display
@@ -335,6 +352,7 @@ function doGet(e) {
     if (!e || !e.parameter || !e.parameter.action || !e.parameter.row) {
       const template = HtmlService.createTemplateFromFile('form');
       template.userEmail = Session.getActiveUser().getEmail(); // inject user email before evaluating
+      Logger.log(`Access Granted: Showing Leave Form for ${activeUser}`);
       return template.evaluate().setTitle("Leave Request Form");
     }
 
@@ -347,6 +365,7 @@ function doGet(e) {
     // const stageFromParam = e.parameter.stage; // The stage link was clicked from
 
     if (isNaN(rowIndex) || rowIndex < 2 || !['approve', 'reject'].includes(action)) {
+      Logger.log(`[INFO]: ${activeUser} - Invalid parameters. Please ensure the link is correct.`);
       return HtmlService.createHtmlOutput("Error: Invalid parameters. Please ensure the link is correct.").setTitle("Error");
     }
 
@@ -533,7 +552,7 @@ function doGet(e) {
         };
 
         const cekAnnual = leaveTypes.annual.includes(leaveType);
-        const cekSick = leaveTypes.sick.includes(leaveType);
+        const cekSick = leaveTypes.sick.includes(leaveType);        
 
         if ((cekAnnual || cekSick) && days > applicableBalance) {
           const rejectionNote = performAutoReject(
@@ -589,7 +608,8 @@ function doGet(e) {
                 Logger.log(`Saved HR Token to sheet at row ${rowIndex}, column ${COLUMNS.HR_TOKEN}`);
 
                 // Send approval email to HR
-                sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.HR_EMAIL, nextStage, rowIndex, hrToken);
+                const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ
+                sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.HR_EMAIL, nextStage, rowIndex, hrToken, refID);
                 Logger.log(`Sent approval email to HR: ${CONFIG.HR_EMAIL} for row ${rowIndex}`);
               }
               break;
@@ -635,7 +655,8 @@ function doGet(e) {
                   Logger.log(`Generated GM Token: ${gmToken}`);
                   sheet.getRange(rowIndex, COLUMNS.GM_TOKEN).setValue(gmToken);
 
-                  sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.GM_EMAIL, nextStage, rowIndex, gmToken);
+                  const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ
+                  sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.GM_EMAIL, nextStage, rowIndex, gmToken, refID);
                   Logger.log("GM approval email sent");
                 } else {
                   Logger.log("WFH submitted by SPV → finalize after HR Review");
@@ -652,7 +673,8 @@ function doGet(e) {
 
                 if (needsGM) {
                   Logger.log("Sending request to GM for final review");
-                  sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.GM_EMAIL, nextStage, rowIndex, gmToken);
+                  const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ
+                  sendApprovalEmail(name, leaveType, startDate, endDate, reasonText, CONFIG.GM_EMAIL, nextStage, rowIndex, gmToken, refID);
                   Logger.log("GM approval email sent");
                 } else {
                   Logger.log("No GM needed → finalizing request");
@@ -809,12 +831,15 @@ function submitRequest(name, email, department, leaveType, startDate, endDate, r
     const firstDate = parseDMYDate(startDate);
     const lastDate = parseDMYDate(endDate);
 
+    Logger.log(`Incoming request: ${name} (${email}), Dept: ${department}`);
+
     if (!firstDate || !lastDate) {
       Logger.log(`Invalid date format received: ${startDate}, ${endDate}`);
       throw new Error("Invalid date format. Please use DD-MM-YYYY.");
     }
 
     if (lastDate < firstDate) {
+      Logger.log(`Date validation failed: endDate (${lastDate}) before startDate (${firstDate})`);
       throw new Error("Are you blind or what?<br>Have you make a coffee today?<br>Last day of leave cannot be before the first day.");
     }
 
@@ -861,6 +886,8 @@ function submitRequest(name, email, department, leaveType, startDate, endDate, r
       }
     }
 
+    Logger.log(`Next stage: ${stage}, Approver: ${approvalEmail}`);
+
     const spvToken = generateRandomToken();
     const hrToken = generateRandomToken();
     const gmToken = generateRandomToken();
@@ -874,6 +901,9 @@ function submitRequest(name, email, department, leaveType, startDate, endDate, r
         tokenToUse = gmToken;
       }
 
+    // Generate RefID for this submission
+    const refID = generateReferenceID();
+
     // Append the request to the sheet
     const newRow = sheet.appendRow([
     new Date(), name, department, leaveType,
@@ -881,18 +911,22 @@ function submitRequest(name, email, department, leaveType, startDate, endDate, r
     "Pending", email, spvEmail, hrEmail, gmEmail, stage,
     "", "", new Date(), // Decision, Note, Decision Date
     "", "", "",         // SPV_DECISION, HR_DECISION, GM_DECISION
-    spvToken, hrToken, gmToken
+    spvToken, hrToken, gmToken,
+    "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", // fill until col AQ
+    refID // Column AQ
   ]);
 
     const rowIndex = sheet.getLastRow();
 
     // Send confirmation to requester
-    sendSubmissionConfirmation(email, name, leaveType, firstDate, lastDate, reason, stage);
+    Logger.log(`Sending confirmation email to ${email} with RefID ${refID}`);
+    sendSubmissionConfirmation(email, name, leaveType, firstDate, lastDate, reason, stage, rowIndex, refID);
 
     // Send approval request to next stage
-    sendApprovalEmail(name, leaveType, firstDate, lastDate, reason, approvalEmail, stage, rowIndex, tokenToUse);
+    Logger.log(`Sending approval email to SPV: ${spvEmail}, row ${rowIndex + 1}, refID ${refID}`);
+    sendApprovalEmail(name, leaveType, firstDate, lastDate, reason, approvalEmail, stage, rowIndex, tokenToUse, refID);
 
-
+    Logger.log(`Submit Request completed successfully for ${name} (${email})`);
     return "Success";
 
   } catch (e) {
@@ -924,6 +958,9 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
   const gmStatus = sheet.getRange(row, COLUMNS.GM_DECISION).getValue() || '';
   const department = sheet.getRange(row, COLUMNS.DEPARTMENT).getValue();
   const days = calculateLeaveDays(startDate, endDate);
+
+  // Get refID from sheet
+  const refID = sheet.getRange(row, COLUMNS.REF_ID).getValue();
 
   const leaveTypes = {
     annual: ["Annual Leave", "Bereavement Leave", "Career Leave", "Ceremony Leave", "Other"],
@@ -992,7 +1029,9 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
     spvStatus, hrStatus, gmStatus,
     finalDecision: decision,
     finalNote,
-    updatedBalance
+    updatedBalance,
+    refID,      // <-- added
+    row  
   });
 
   const htmlBody = template.evaluate().getContent();
@@ -1042,7 +1081,7 @@ function generateCalendarLink(title, startDate, endDate, description) {
   return `https://www.google.com/calendar/render?action=TEMPLATE&text=${calTitle}&dates=${start}/${end}&details=${details}`;
 }
 
-function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approverEmail, stage, row, tokenToUse) {
+function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approverEmail, stage, row, tokenToUse, refID) {
   const baseUrl = ScriptApp.getService().getUrl();
 
   const template = HtmlService.createTemplateFromFile("emailtemplate");
@@ -1052,6 +1091,7 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
   template.endDate = formatDate(endDate);
   template.reason = reason;
   template.stage = stage;
+  template.refID = refID;
   template.baseUrl = baseUrl;
   template.row = row;
 
@@ -1085,7 +1125,7 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
   }
 }
 
-function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, reason, stage) {
+function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, reason, stage, row, refID) {
   const scriptUrl = ScriptApp.getService().getUrl();
   const trackingLink = `${scriptUrl}?track=${encodeURIComponent(email)}`;
 
@@ -1093,9 +1133,10 @@ function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, 
     <div style="font-family:Arial,sans-serif;max-width:600px; margin:auto; border:1px solid #ddd; padding:20px;">
       <h2 style="color:#2c3e50; border-bottom:1px solid #eee; padding-bottom:10px;">Leave Request Submitted</h2>
       <p>Dear ${name},</p>
-      <p>Your leave request has been successfully submitted and is now pending <strong>${stage}</strong>.</p>
+      <p>Your leave request has been successfully submitted and is now awaiting <strong>${stage}</strong>.</p>
       
       <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+        <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;width:30%;"><strong>Form ID</strong></td><td style="padding:8px;border:1px solid #ddd;">${refID}${row}</td></tr>
         <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;width:30%;"><strong>Leave Type</strong></td><td style="padding:8px;border:1px solid #ddd;">${leaveType}</td></tr>
         <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;"><strong>Dates</strong></td><td style="padding:8px;border:1px solid #ddd;">${formatDate(startDate)} to ${formatDate(endDate)}</td></tr>
         <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;"><strong>Reason</strong></td><td style="padding:8px;border:1px solid #ddd;">${escapeHtml(reason)}</td></tr>
@@ -1288,6 +1329,7 @@ function renderTrackingPage(email, showHistory = false) {
             <th>Last Day</th>
             <th>Status</th>
             <th>Stage</th>
+            <th>Form ID</th>
           </tr>
         </thead>
         <tbody>
@@ -1303,6 +1345,7 @@ function renderTrackingPage(email, showHistory = false) {
         <td>${formatDateShort(row[COLUMNS.END_DATE - 1])}</td>
         <td>${escapeHtml(row[COLUMNS.STATUS - 1])}</td>
         <td>${escapeHtml(row[COLUMNS.STAGE - 1])}</td>
+        <td>${escapeHtml(row[COLUMNS.REF_ID - 1])}</td>
       </tr>
     `;
   });

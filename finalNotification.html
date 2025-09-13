@@ -6,8 +6,8 @@
     Created for ONEderland Leave Request System
     If you need support, improvements, or bug fixes, please contact the creator.
 
-    Version: 10
-    Date: July 26, 2025
+    Version: 16
+    Date: September 13, 2025
   -->
   <base target="_top">
   <style>
@@ -45,10 +45,14 @@
 
     <div class="section">
       <p>Hi <strong><?= name ?></strong>,</p>
-      <p>Your leave/WFH request has been processed. Below are the final decisions:</p>
+      <p>Your Leave/WFH request has been processed. Below are the final decisions:</p>
     </div>
 
     <table>
+      <tr>
+        <td class="label">Form ID</td>
+        <td><?= refID ?><?= row ?></td>
+      </tr>
       <tr>
         <td class="label">Leave Type</td>
         <td><?= leaveType ?></td>
@@ -98,6 +102,7 @@
       <? } ?>
     </table>
    
+
     <div class="footer">
       <p>Thank you for using the ONEderland Leave System.</p>
     </div>
