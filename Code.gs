@@ -552,7 +552,8 @@ function doGet(e) {
         };
 
         const cekAnnual = leaveTypes.annual.includes(leaveType);
-        const cekSick = leaveTypes.sick.includes(leaveType);        
+        const cekSick = leaveTypes.sick.includes(leaveType);
+        const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ        
 
         if ((cekAnnual || cekSick) && days > applicableBalance) {
           const rejectionNote = performAutoReject(
@@ -568,7 +569,8 @@ function doGet(e) {
             requester,                        // 10
             spvEmail === requester ? "Auto-Rejected" : "",  // 11
             hrEmail === requester ? "Auto-Rejected" : "",   // 12
-            gmEmail === requester ? "Auto-Rejected" : ""    // 13
+            gmEmail === requester ? "Auto-Rejected" : "",    // 13
+            refID   // 14
           );
 
           const html = HtmlService.createTemplateFromFile('result');
@@ -593,7 +595,8 @@ function doGet(e) {
 
               if (leaveType === "Working From Home (WFH)") {
                 Logger.log(`Auto-finalizing WFH request. Finalizing request as 'Approved by SPV'`);
-                finalizeRequest(rowIndex, decision, note, name, requester, "Approved by SPV");
+                const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ
+                finalizeRequest(rowIndex, decision, note, name, requester, "Approved by SPV", refID);
               } else {
                 nextStage = "HR Review";
                 sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
@@ -660,7 +663,8 @@ function doGet(e) {
                   Logger.log("GM approval email sent");
                 } else {
                   Logger.log("WFH submitted by SPV → finalize after HR Review");
-                  finalizeRequest(rowIndex, decision, note, name, requester, "Approved by HR");
+                  const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ
+                  finalizeRequest(rowIndex, decision, note, name, requester, "Approved by HR", refID);
                 }
               } else {
                 nextStage = needsGM ? "GM Review" : "Final";
@@ -678,7 +682,8 @@ function doGet(e) {
                   Logger.log("GM approval email sent");
                 } else {
                   Logger.log("No GM needed → finalizing request");
-                  finalizeRequest(rowIndex, decision, note, name, requester, "Approved by HR");
+                  const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ
+                  finalizeRequest(rowIndex, decision, note, name, requester, "Approved by HR", refID);
                 }
               }
               break;
@@ -690,12 +695,14 @@ function doGet(e) {
 
               if (leaveType === "Working From Home (WFH)") {
                 Logger.log("WFH submitted → GM → Reporting");
-                finalizeRequest(rowIndex, decision, note, name, requester, "Approved by GM");
+                const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ
+                finalizeRequest(rowIndex, decision, note, name, requester, "Approved by GM", refID);
               } else {
                 Logger.log("Non-WFH → GM → Finalization");
                 nextStage = "Final";
                 sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
-                finalizeRequest(rowIndex, decision, note, name, requester, "Approved by GM");
+                const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ
+                finalizeRequest(rowIndex, decision, note, name, requester, "Approved by GM", refID);
               }
               break;
 
@@ -703,7 +710,8 @@ function doGet(e) {
               Logger.log("Unexpected Stage: " + currentStage);
               nextStage = "Error in Workflow";
               sheet.getRange(rowIndex, COLUMNS.STAGE).setValue(nextStage);
-              finalizeRequest(rowIndex, "Error", "Workflow error at stage: " + stage, name, requester, "Workflow Error");
+              const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ
+              finalizeRequest(rowIndex, "Error", "Workflow error at stage: " + stage, name, requester, "Workflow Error", refID);
               break;
           }
         } else { // Action is 'reject'
@@ -723,6 +731,8 @@ function doGet(e) {
 
             Logger.log(`Leave dates: ${formattedStartDate} to ${formattedEndDate}, total ${leaveDays} day(s)`);
 
+            const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ
+
             const template = HtmlService.createTemplateFromFile("finalNotification");
             template.name = name;
             template.leaveType = leaveType;
@@ -733,6 +743,8 @@ function doGet(e) {
             template.finalDecision = "Rejected";
             template.finalNote = rejectionNote;
             template.updatedBalance = null;
+            template.refID = refID;   // Added
+            template.row = rowIndex;  // Should be fix refID not defined.
 
             template.spvStatus = values[COLUMNS.SPV_DECISION - 1] || "—";
             template.hrStatus = values[COLUMNS.HR_DECISION - 1] || "—";
@@ -945,7 +957,7 @@ function escapeHtml(text) {
     .replace(/'/g, "&#039;");
 }
 
-function finalizeRequest(row, decision, note, name, requesterEmail, finalApprovalStageNote) {
+function finalizeRequest(row, decision, note, name, requesterEmail, finalApprovalStageNote, refID) {
   const sheet = SpreadsheetApp.getActive().getSheetByName("Requests");
   const finalNote = note || finalApprovalStageNote || "No Notes";
 
@@ -960,7 +972,7 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
   const days = calculateLeaveDays(startDate, endDate);
 
   // Get refID from sheet
-  const refID = sheet.getRange(row, COLUMNS.REF_ID).getValue();
+  // const refID = sheet.getRange(row, COLUMNS.REF_ID).getValue();
 
   const leaveTypes = {
     annual: ["Annual Leave", "Bereavement Leave", "Career Leave", "Ceremony Leave", "Other"],
@@ -985,12 +997,12 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
         const isSick = leaveTypes.sick.includes(leaveType);
 
         if (isAnnual && days > currentLeave) {
-          performAutoReject(row, currentLeave, "Annual", days, name, leaveType, startDate, endDate, reason, requesterEmail, spvStatus, hrStatus, gmStatus);
+          performAutoReject(row, currentLeave, "Annual", days, name, leaveType, startDate, endDate, reason, requesterEmail, spvStatus, hrStatus, gmStatus, refID);
           return;
         }
 
         if (isSick && days > currentSick) {
-          performAutoReject(row, currentSick, "Sick", days, name, leaveType, startDate, endDate, reason, requesterEmail, spvStatus, hrStatus, gmStatus);
+          performAutoReject(row, currentSick, "Sick", days, name, leaveType, startDate, endDate, reason, requesterEmail, spvStatus, hrStatus, gmStatus, refID);
           return;
         }
 
@@ -1254,6 +1266,9 @@ function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType
     }
   }
 
+  // ✅ Fetch RefID from sheet
+  const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue();
+
   // Final rejection email
   const template = HtmlService.createTemplateFromFile('finalNotification');
   template.name = name;
@@ -1267,6 +1282,8 @@ function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType
   template.gmStatus = gmStatus;
   template.finalDecision = "Rejected";
   template.finalNote = systemNote; // Use updated extra note
+  template.refID = refID;   // ✅ properly assigned
+  template.row = rowIndex;  // ✅ properly assigned
   template.updatedBalance = {
     leave: currentLeave,
     sick: currentSick
