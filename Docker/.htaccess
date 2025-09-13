@@ -1,3 +1,5 @@
+# .htaccess
+
 # Set default index file
 DirectoryIndex index.html
 
@@ -27,9 +29,16 @@ DirectoryIndex index.html
 </IfModule>
 
 # Redirect all to maintenance.html if down.flag exists,
-# but exclude maintenance.html itself to avoid infinite loop
 RewriteEngine On
 
+# Only redirect if down.flag exists
 RewriteCond %{DOCUMENT_ROOT}/down/down.flag -f
+
+# Exclude maintenance page
 RewriteCond %{REQUEST_URI} !^/down/maintenance\.html$
+
+# Exclude static files (css|js|png|jpg|gif|ico|svg|mp4|webm|woff2 etc.)
+RewriteCond %{REQUEST_URI} !\.(css|js|gif|jpg|jpeg|png|svg|ico|woff|woff2|ttf|eot|mp4|webm)$ [NC]
+
+# Redirect everything else
 RewriteRule ^.*$ /down/maintenance.html [R=302,L]
