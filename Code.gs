@@ -914,28 +914,37 @@ function submitRequest(name, email, department, leaveType, startDate, endDate, r
       }
 
     // Generate RefID for this submission
-    const refID = generateReferenceID();
+    let refID = generateReferenceID();
 
     // Append the request to the sheet
     const newRow = sheet.appendRow([
-    new Date(), name, department, leaveType,
-    firstDate, lastDate, reason,
-    "Pending", email, spvEmail, hrEmail, gmEmail, stage,
-    "", "", new Date(), // Decision, Note, Decision Date
-    "", "", "",         // SPV_DECISION, HR_DECISION, GM_DECISION
-    spvToken, hrToken, gmToken,
-    "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", // fill until col AQ
-    refID // Column AQ
-  ]);
+      new Date(), name, department, leaveType,
+      firstDate, lastDate, reason,
+      "Pending", email, spvEmail, hrEmail, gmEmail, stage,
+      "", "", new Date(), // Decision, Note, Decision Date
+      "", "", "",         // SPV_DECISION, HR_DECISION, GM_DECISION
+      spvToken, hrToken, gmToken,
+      "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", // fill until col AQ
+      "" // placeholder for RefID
+    ]);
+
+    // Get row number
+    const lastRow = sheet.getLastRow();
+
+    // Append row number to RefID
+    refID = `${refID}${lastRow}`;
+
+    // Save into AQ
+    sheet.getRange(lastRow, COLUMNS.REF_ID).setValue(refID);
 
     const rowIndex = sheet.getLastRow();
 
     // Send confirmation to requester
-    Logger.log(`Sending confirmation email to ${email} with RefID ${refID}`);
-    sendSubmissionConfirmation(email, name, leaveType, firstDate, lastDate, reason, stage, rowIndex, refID);
+    Logger.log(`Sending confirmation email to ${email} with RefID = ${refID}`);
+    sendSubmissionConfirmation(email, name, leaveType, firstDate, lastDate, reason, stage, refID);
 
     // Send approval request to next stage
-    Logger.log(`Sending approval email to SPV: ${spvEmail}, row ${rowIndex + 1}, refID ${refID}`);
+    Logger.log(`Sending approval email to SPV: ${spvEmail}, row ${rowIndex}, RefID = ${refID}`);
     sendApprovalEmail(name, leaveType, firstDate, lastDate, reason, approvalEmail, stage, rowIndex, tokenToUse, refID);
 
     Logger.log(`Submit Request completed successfully for ${name} (${email})`);
@@ -1105,7 +1114,6 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
   template.stage = stage;
   template.refID = refID;
   template.baseUrl = baseUrl;
-  template.row = row;
 
   // Extract normalized stage (lowercase) → Used for URL param
   const shortStage = stage.toLowerCase().includes("spv") ? "spv"
@@ -1137,7 +1145,7 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
   }
 }
 
-function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, reason, stage, row, refID) {
+function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, reason, stage, refID) {
   const scriptUrl = ScriptApp.getService().getUrl();
   const trackingLink = `${scriptUrl}?track=${encodeURIComponent(email)}`;
 
@@ -1148,7 +1156,7 @@ function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, 
       <p>Your leave request has been successfully submitted and is now awaiting <strong>${stage}</strong>.</p>
       
       <table style="width:100%;border-collapse:collapse;margin:20px 0;">
-        <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;width:30%;"><strong>Form ID</strong></td><td style="padding:8px;border:1px solid #ddd;">${refID}${row}</td></tr>
+        <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;width:30%;"><strong>Form ID</strong></td><td style="padding:8px;border:1px solid #ddd;">${refID}</td></tr>
         <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;width:30%;"><strong>Leave Type</strong></td><td style="padding:8px;border:1px solid #ddd;">${leaveType}</td></tr>
         <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;"><strong>Dates</strong></td><td style="padding:8px;border:1px solid #ddd;">${formatDate(startDate)} to ${formatDate(endDate)}</td></tr>
         <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;"><strong>Reason</strong></td><td style="padding:8px;border:1px solid #ddd;">${escapeHtml(reason)}</td></tr>
@@ -1283,7 +1291,6 @@ function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType
   template.finalDecision = "Rejected";
   template.finalNote = systemNote; // Use updated extra note
   template.refID = refID;   // ✅ properly assigned
-  template.row = rowIndex;  // ✅ properly assigned
   template.updatedBalance = {
     leave: currentLeave,
     sick: currentSick
