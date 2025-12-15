@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
+    <!--
     Creator: Galbatorix
     Created for ONEderland Leave Request System
     If you need support, improvements, or bug fixes, please contact the creator.
@@ -50,7 +50,7 @@
         <? } else if (action === 'reject') { ?>
           <span class="text-danger">❌ Request Rejected</span>
         <? } else { ?>
-          <span class="text-info">ℹ️ Request Processed</span>
+          <span class="text-info">ℹ️ Request Has Been Processed</span>
         <? } ?>
       </h2>
 
@@ -58,7 +58,7 @@
       <? const alertClass = isAutoRejected ? 'warning' : (action === 'approve' ? 'success' : (action === 'reject' ? 'danger' : 'info')); ?>
       <div class="alert alert-<?= alertClass ?>">
         <h5 class="alert-heading">
-          <?= isAutoRejected ? `Auto-Rejection (System Override) at ${stage}` : `Decision at ${stage} Stage` ?>
+          <?= isAutoRejected ? `Auto-Rejection (System Override) at ${stage}` : `Decision ${stage} Stage` ?>
         </h5>
         <p class="mb-0">
           <? if (note && note.trim() !== "") { ?>
