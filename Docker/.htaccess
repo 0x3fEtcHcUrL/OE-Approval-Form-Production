@@ -35,7 +35,9 @@ RewriteEngine On
 RewriteCond %{DOCUMENT_ROOT}/down/down.flag -f
 
 # Exclude maintenance page
-RewriteCond %{REQUEST_URI} !^/down/maintenance\.html$
+RewriteCond %{REQUEST_URI} !^/down/maintenance\.html$ [NC]
+RewriteCond %{REQUEST_URI} !^/privacy\.html$ [NC]
+RewriteCond %{REQUEST_URI} !^/terms\.html$ [NC]
 
 # Exclude static files (css|js|png|jpg|gif|ico|svg|mp4|webm|woff2 etc.)
 RewriteCond %{REQUEST_URI} !\.(css|js|gif|jpg|jpeg|png|svg|ico|woff|woff2|ttf|eot|mp4|webm)$ [NC]

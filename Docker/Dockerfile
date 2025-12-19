@@ -6,15 +6,15 @@ RUN a2enmod rewrite
 # Copy application files
 COPY ./index.html /var/www/html/
 COPY ./.htaccess /var/www/html/
-COPY ./privacy.html /var/www/html/
-COPY ./terms.html /var/www/html/
+COPY ./privacy-policy.html /var/www/html/
+COPY ./tos.html /var/www/html/
 COPY ./testing.html /var/www/html/
-COPY ./bgvideos-leaveform.mp4 /var/www/html/
 
 # Copy folders
 COPY ./down /var/www/html/down
 COPY ./.well-known /var/www/html/.well-known
 COPY ./images /var/www/html/images
+COPY ./bgmv /var/www/html/bgmv
 
 # Allow .htaccess overrides globally
 RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf

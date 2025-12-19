@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <!--
+  <!--
     Creator: Galbatorix
     Created for ONEderland Leave Request System
     If you need support, improvements, or bug fixes, please contact the creator.
@@ -10,298 +10,315 @@
     Version: 16
     Date: September 13, 2025
   -->
-    <base target="_top">
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="icon" sizes="16x16 32x32 48x48"
-        href="https://cloudserver.satuimpianbersama.com/apps/theming/favicon/dashboard" type="image/x-icon" />
-    <style>
-        body {
-            padding: 2rem;
-            font-family: "Inter", system-ui, sans-serif;
-        }
+  <base target="_top">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="icon" sizes="16x16 32x32 48x48"
+    href="https://cloudserver.satuimpianbersama.com/apps/theming/favicon/dashboard" type="image/x-icon" />
+  <style>
+    body {
+      padding: 2rem;
+      font-family: "Inter", system-ui, sans-serif;
+    }
 
-        /* Background video + overlay */
-        #bg-video {
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: -3;
-        }
+    /* Background video + overlay */
+    #bg-video {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -3;
+    }
 
-        #overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            z-index: -2;
-        }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: -2;
+    }
 
-        /* Form container */
-        .form-wrapper {
-            max-width: 950px;
-            margin: auto;
-            padding: 2.5rem;
-            background: rgba(255, 255, 255, 0.93);
-            border-radius: 16px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-            backdrop-filter: blur(8px);
-        }
+    /* Form container */
+    .form-wrapper {
+      max-width: 950px;
+      margin: auto;
+      padding: 2.5rem;
+      background: rgba(255, 255, 255, 0.93);
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      backdrop-filter: blur(8px);
+    }
 
-        /* Typography */
-        .title-text {
-            font-weight: 600;
-            font-size: 26px;
-            margin-bottom: .5rem;
-        }
+    /* Typography */
+    .title-text {
+      font-weight: 600;
+      font-size: 26px;
+      margin-bottom: .5rem;
+    }
 
-        .subtitle-text {
-            font-size: 14px;
-            opacity: .7;
-        }
+    .subtitle-text {
+      font-size: 14px;
+      opacity: .7;
+    }
 
-        /* Buttons & Inputs */
-        .form-control,
-        .btn-light,
-        .btn-primary {
-            border-radius: 10px;
-            padding: 10px 14px;
-        }
+    /* Buttons & Inputs */
+    .form-control,
+    .btn-light,
+    .btn-primary {
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
 
-        .btn-primary {
-            font-size: 18px;
-            padding: 12px;
-        }
+    .btn-primary {
+      font-size: 18px;
+      padding: 12px;
+    }
 
-        /* Dropdown behavior */
-        .dropdown-toggle {
-            text-align: left;
-        }
+    /* Dropdown behavior */
+    .dropdown-toggle {
+      text-align: left;
+    }
 
-        .dropdown-item {
-            transition: background .2s ease;
-        }
+    .dropdown-item {
+      transition: background .2s ease;
+    }
 
-        .dropdown-item:hover {
-            background: #1375d7 !important;
-            color: #fff !important;
-        }
+    .dropdown-item:hover {
+      background: #1375d7 !important;
+      color: #fff !important;
+    }
 
-        /* Error field */
-        .is-invalid {
-            border-color: #dc3545 !important;
-            background: #ffe6e6 !important;
-        }
+    /* Error field */
+    .is-invalid {
+      border-color: #dc3545 !important;
+      background: #ffe6e6 !important;
+    }
 
-        /* Utility + layout */
-        .top-right-login {
-            position: absolute;
-            top: 22px;
-            right: 22px;
-            display: flex;
-            gap: 10px;
-        }
+    /* Utility + layout */
+    .top-right-login {
+      position: absolute;
+      top: 22px;
+      right: 22px;
+      display: flex;
+      gap: 10px;
+    }
 
-        .footer-overlay {
-            background: rgba(0, 0, 0, 0.6);
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-        }
+    .footer-overlay {
+      background: rgba(0, 0, 0, 0.6);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .form-wrapper {
-                padding: 1.5rem;
-            }
+    /* Responsive */
+    @media (max-width: 768px) {
+      .form-wrapper {
+        padding: 1.5rem;
+      }
 
-            textarea {
-                height: 120px !important;
-            }
-        }
-    </style>
+      textarea {
+        height: 120px !important;
+      }
+    }
+  </style>
 
 <body>
 
-    <!-- Background Video -->
-    <video autoplay muted loop playsinline id="bg-video">
-        <source src="https://leaveform.satuimpianbersama.com/bgmv/bg_Underground_Cave_1920x1080.mp4" type="video/mp4">
-    </video>
-    <div id="overlay"></div>
+  <!-- Background Video -->
+  <video autoplay muted loop playsinline id="bg-video">
+    <source src="https://leaveform.satuimpianbersama.com/bgmv/bg_Underground_Cave_1920x1080.mp4" type="video/mp4">
+  </video>
+  <div id="overlay"></div>
 
-    <!-- Hidden YouTube Player -->
-    <div id="musicPlayer" style="display:none;"></div>
+  <!-- Hidden YouTube Player -->
+  <div id="musicPlayer" style="display:none;"></div>
 
-    <!-- Logo -->
-    <div class="text-center mb-4">
-        <img src="https://leaveform.satuimpianbersama.com/images/oe-logo.png" width="430" class="img-fluid"
-            alt="ONEderland Enterprise Logo" />
-    </div>
+  <!-- Logo -->
+  <div class="text-center mb-4">
+    <img src="https://leaveform.satuimpianbersama.com/images/oe-logo.png" width="400" class="img-fluid"
+      alt="ONEderland Enterprise Logo" />
+  </div>
 
-    <!-- Main Form Container -->
-    <form id="leaveForm">
-        <div class="container-lg form-wrapper p-4">
+  <!-- Main Form Container -->
+  <form id="leaveForm">
+    <div class="container-lg form-wrapper p-4">
 
-            <div class="row">
-                <!-- LEFT COLUMN -->
-                <div class="col-md-6 pe-md-4">
+      <div class="row">
+        <!-- LEFT COLUMN -->
+        <div class="col-md-6 pe-md-4">
 
-                    <div class="mb-3">
-                        <label class="form-label">Full Name</label>
-                        <input type="text" id="name" placeholder="Your Full Name" class="form-control" required>
-                    </div>
+          <div class="mb-3">
+            <label class="form-label">Full Name</label>
+            <input type="text" id="name" placeholder="Your Full Name" class="form-control"
+              value="<?= detectedName ? detectedName : '' ?>" required>
+          </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" id="email" placeholder="Your Working Email Address" class="form-control"
-                            required>
-                    </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" id="email" placeholder="Your Working Email Address" class="form-control"
+              value="<?= detectedEmail ? detectedEmail : '' ?>" <?=detectedEmail
+              ? 'readonly style="background-color:#e9ecef;"' : '' ?> required>
+            <? if (detectedEmail) { ?>
+            <small class="text-muted">Auto-detected from your Google Account</small>
+            <? } ?>
+          </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">Department</label>
-                        <div class="dropdown w-100">
-                            <button
-                                class="btn btn-light dropdown-toggle w-100 d-flex justify-content-between align-items-center"
-                                type="button" id="departmentDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <span id="departmentText">Select</span>
-                            </button>
-                            <ul class="dropdown-menu w-100">
-                                <li><a class="dropdown-item dept-option" data-value="Carbon Energy">Carbon Energy</a>
-                                </li>
-                                <li><a class="dropdown-item dept-option" data-value="Education ONE">Education ONE</a>
-                                </li>
-                                <li><a class="dropdown-item dept-option" data-value="English Cafe">English Cafe</a></li>
-                                <li><a class="dropdown-item dept-option" data-value="General Manager">General
-                                        Manager</a>
-                                </li>
-                                <li><a class="dropdown-item dept-option" data-value="Neurone Recruitment">Neurone
-                                        Recruitment</a></li>
-                                <li><a class="dropdown-item dept-option" data-value="ONEderland Consulting">ONEderland
-                                        Consulting</a></li>
-                                <li><a class="dropdown-item dept-option"
-                                        data-value="ONEderland Enterprise Finance">ONEderland Enterprise
-                                        Finance</a></li>
-                                <li><a class="dropdown-item dept-option"
-                                        data-value="ONEderland Enterprise HRGA">ONEderland
-                                        Enterprise HRGA</a></li>
-                                <li><a class="dropdown-item dept-option" data-value="PeraONE Xperience">PeraONE
-                                        Xperience</a></li>
-                                <li><a class="dropdown-item dept-option" data-value="SnG OE">SnG OE</a></li>
-                            </ul>
-                        </div>
-                        <input type="hidden" id="department" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Leave Type</label>
-                        <div class="dropdown w-100">
-                            <button
-                                class="btn btn-light dropdown-toggle w-100 d-flex justify-content-between align-items-center"
-                                type="button" id="leaveTypeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <span id="leaveTypeText">Select</span>
-                            </button>
-                            <ul class="dropdown-menu w-100">
-                                <li><a class="dropdown-item leave-option" data-value="Annual Leave">Annual Leave</a>
-                                </li>
-                                <li><a class="dropdown-item leave-option" data-value="Bereavement Leave">Bereavement
-                                        Leave</a></li>
-                                <li><a class="dropdown-item leave-option" data-value="Career Leave">Career Leave</a>
-                                </li>
-                                <li><a class="dropdown-item leave-option" data-value="Ceremony Leave">Ceremony Leave</a>
-                                </li>
-                                <li><a class="dropdown-item leave-option" data-value="Sick Leave">Sick Leave</a></li>
-                                <li><a class="dropdown-item leave-option" data-value="Unpaid Leave - FT">Unpaid Leave -
-                                        FT</a></li>
-                                <li><a class="dropdown-item leave-option" data-value="Unpaid Leave - ITN">Unpaid Leave -
-                                        ITN</a></li>
-                                <li><a class="dropdown-item leave-option" data-value="Working From Home (WFH)">Working
-                                        From
-                                        Home (WFH)</a></li>
-                                <li><a class="dropdown-item leave-option" data-value="Other">Other</a></li>
-                            </ul>
-                        </div>
-                        <input type="hidden" id="leaveType" required>
-                    </div>
-
-                </div>
-
-                <!-- RIGHT COLUMN -->
-                <div class="col-md-6 ps-md-4">
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">First Day</label>
-                            <input type="text" id="firstDay" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Last Day</label>
-                            <input type="text" id="lastDay" class="form-control" required>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Total Leave Days</label>
-                        <input type="number" id="totalDays" placeholder="Total Leave" class="form-control" readonly>
-                        <small class="text-muted">Weekends (Sat & Sun) auto excluded.</small>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="reason" class="form-label">Reason</label>
-                        <textarea id="reason" placeholder="You can write your message here" class="form-control"
-                            rows="4" required
-                            oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
-                    </div>
-
-                </div>
+          <div class="mb-3">
+            <label class="form-label">Department</label>
+            <div class="dropdown w-100">
+              <button class="btn btn-light dropdown-toggle w-100 d-flex justify-content-between align-items-center"
+                type="button" id="departmentDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <span id="departmentText">Select</span>
+              </button>
+              <ul class="dropdown-menu w-100">
+                <li><a class="dropdown-item dept-option" data-value="Carbon Energy">Carbon Energy</a>
+                </li>
+                <li><a class="dropdown-item dept-option" data-value="Education ONE">Education ONE</a>
+                </li>
+                <li><a class="dropdown-item dept-option" data-value="English Cafe">English Cafe</a></li>
+                <li><a class="dropdown-item dept-option" data-value="General Manager">General
+                    Manager</a>
+                </li>
+                <li><a class="dropdown-item dept-option" data-value="Neurone Recruitment">Neurone
+                    Recruitment</a></li>
+                <li><a class="dropdown-item dept-option" data-value="ONEderland Consulting">ONEderland
+                    Consulting</a></li>
+                <li><a class="dropdown-item dept-option" data-value="ONEderland Enterprise Finance">ONEderland
+                    Enterprise
+                    Finance</a></li>
+                <li><a class="dropdown-item dept-option" data-value="ONEderland Enterprise HRGA">ONEderland
+                    Enterprise HRGA</a></li>
+                <li><a class="dropdown-item dept-option" data-value="PeraONE Xperience">PeraONE
+                    Xperience</a></li>
+                <li><a class="dropdown-item dept-option" data-value="SnG OE">SnG OE</a></li>
+              </ul>
             </div>
+            <input type="hidden" id="department" required>
+          </div>
 
-            <div class="text-center mt-4">
-                <button type="submit" id="submitBtn" class="btn btn-primary px-5 py-2">Submit Form</button>
+          <div class="mb-3">
+            <label class="form-label">Leave Type</label>
+            <div class="dropdown w-100">
+              <button class="btn btn-light dropdown-toggle w-100 d-flex justify-content-between align-items-center"
+                type="button" id="leaveTypeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <span id="leaveTypeText">Select</span>
+              </button>
+              <ul class="dropdown-menu w-100">
+                <li><a class="dropdown-item leave-option" data-value="Annual Leave">Annual Leave</a>
+                </li>
+                <li><a class="dropdown-item leave-option" data-value="Bereavement Leave">Bereavement
+                    Leave</a></li>
+                <li><a class="dropdown-item leave-option" data-value="Career Leave">Career Leave</a>
+                </li>
+                <li><a class="dropdown-item leave-option" data-value="Ceremony Leave">Ceremony Leave</a>
+                </li>
+                <li><a class="dropdown-item leave-option" data-value="Sick Leave">Sick Leave</a></li>
+                <li><a class="dropdown-item leave-option" data-value="Unpaid Leave - FT">Unpaid Leave -
+                    FT</a></li>
+                <li><a class="dropdown-item leave-option" data-value="Unpaid Leave - ITN">Unpaid Leave -
+                    ITN</a></li>
+                <li><a class="dropdown-item leave-option" data-value="Working From Home (WFH)">Working
+                    From
+                    Home (WFH)</a></li>
+                <li><a class="dropdown-item leave-option" data-value="Other">Other</a></li>
+              </ul>
             </div>
-        </div>
-    </form>
+            <input type="hidden" id="leaveType" required>
+          </div>
 
-    <!-- Loading Spinner -->
-    <div id="loadingScreen"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:9999; text-align:center; padding-top:200px;">
-        <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
-            <span class="visually-hidden">Submitting...</span>
         </div>
-        <p style="margin-top:20px; font-size:18px;">Submitting your request...</p>
-    </div>
 
-    <!-- Bootstrap Modal for Result -->
-    <div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="resultModalLabel">Submission Result</h5>
-                </div>
-                <div class="modal-body" id="resultModalBody">
-                    <!-- This will be filled dynamically -->
-                </div>
-                <div class="modal-footer" id="resultModalFooter">
-                    <button type="button" class="btn btn-primary" id="closeModalBtn" data-bs-dismiss="modal">OK</button>
-                </div>
+        <!-- RIGHT COLUMN -->
+        <div class="col-md-6 ps-md-4">
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">First Day</label>
+              <input type="text" id="firstDay" class="form-control" required>
             </div>
-        </div>
-    </div>
+            <div class="col-md-6">
+              <label class="form-label">Last Day</label>
+              <input type="text" id="lastDay" class="form-control" required>
+            </div>
+          </div>
 
-    <!-- <button id="toggleMusic" class="btn btn-secondary"
+          <div class="mb-3">
+            <label class="form-label">Total Leave Days</label>
+            <input type="number" id="totalDays" placeholder="Total Leave" class="form-control" readonly>
+            <small class="text-muted">Weekends (Sat & Sun) auto excluded.</small>
+          </div>
+
+          <div class="mb-3">
+            <label for="reason" class="form-label">Reason</label>
+            <textarea id="reason" placeholder="You can write your message here" class="form-control" rows="4" required
+              oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+          </div>
+
+          <div class="mb-3" id="attachmentDiv" style="display: none;">
+            <label for="attachment" class="form-label">
+              Medical Certificate (Attachment)
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                class="bi bi-info-circle-fill text-primary ms-1" viewBox="0 0 16 16"
+                style="cursor: pointer; vertical-align: middle;" data-bs-toggle="popover" data-bs-trigger="hover focus"
+                title="Proof of Medication"
+                data-bs-content="Please upload a photo of your medical certificate, pills, prescription, or receipt/bill related to your sick leave.">
+                <path
+                  d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" />
+              </svg>
+            </label>
+            <input type="file" id="attachment" class="form-control" accept="image/*,application/pdf">
+            <small class="text-muted">Required for Sick Leave. Max 5MB.</small>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="button" id="checkBalanceBtn" class="btn btn-primary px-5 py-2">Check Balance</button>
+        <button type="submit" id="submitBtn" class="btn btn-primary px-5 py-2">Submit Form</button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Loading Spinner -->
+  <div id="loadingScreen"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:9999; text-align:center; padding-top:200px;">
+    <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
+      <span class="visually-hidden">Submitting...</span>
+    </div>
+    <p style="margin-top:20px; font-size:18px;">Submitting your request...</p>
+  </div>
+
+  <!-- Bootstrap Modal for Result -->
+  <div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="resultModalLabel">Submission Result</h5>
+        </div>
+        <div class="modal-body" id="resultModalBody">
+          <!-- This will be filled dynamically -->
+        </div>
+        <div class="modal-footer" id="resultModalFooter">
+          <button type="button" class="btn btn-primary" id="closeModalBtn" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- <button id="toggleMusic" class="btn btn-secondary"
       style="position:fixed; bottom:20px; right:20px; z-index:999;">🔈
     </button> -->
 
-    <!-- Footer -->
-    <footer class="footer-overlay text-light small text-center rounded-3 px-4 py-3 mt-5 mx-auto"
-        style="max-width:400px;">
-        © ONEderland Enterprise <span id="footerYear"></span> — v3.3.01122025142140
-        <br>
-        <a href="https://leaveform.satuimpianbersama.com/privacy-policy.html" target="_blank" rel="noopener noreferrer"
-            class="text-light text-decoration-underline">Privacy Policy</a> |
-        <a href="https://leaveform.satuimpianbersama.com/tos.html" target="_blank" rel="noopener noreferrer"
-            class="text-light text-decoration-underline">Terms of Service</a>
-    </footer>
+  <!-- Footer -->
+  <footer class="footer-overlay text-light small text-center rounded-3 px-4 py-3 mt-5 mx-auto" style="max-width:400px;">
+    © ONEderland Enterprise <span id="footerYear"></span> — v3.4.18122025
+    <br>
+    <a href="https://leaveform.satuimpianbersama.com/privacy-policy.html" target="_blank" rel="noopener noreferrer"
+      class="text-light text-decoration-underline">Privacy Policy</a> |
+    <a href="https://leaveform.satuimpianbersama.com/tos.html" target="_blank" rel="noopener noreferrer"
+      class="text-light text-decoration-underline">Terms of Service</a>
+  </footer>
 </body>
 
 
@@ -309,196 +326,278 @@
 <script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js"></script>
 
 <script>
-    function escapeHtml(text) {
-        if (!text) return text;
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+  function escapeHtml(text) {
+    if (!text) return text;
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  document.getElementById("footerYear").textContent = new Date().getFullYear();
+
+  // Department dropdown
+  document.querySelectorAll('.dept-option').forEach(item => {
+    item.addEventListener('click', function () {
+      const value = this.getAttribute('data-value');
+      document.getElementById('departmentText').innerText = value;
+      document.getElementById('department').value = value;
+    });
+  });
+
+  // Leave Type dropdown
+  document.querySelectorAll('.leave-option').forEach(item => {
+    item.addEventListener('click', function () {
+      const value = this.getAttribute('data-value');
+      document.getElementById('leaveTypeText').innerText = value;
+      document.getElementById('leaveType').value = value;
+
+      // Toggle Attachment visibility
+      const attachmentDiv = document.getElementById('attachmentDiv');
+      const attachmentInput = document.getElementById('attachment');
+      if (value === "Sick Leave") {
+        attachmentDiv.style.display = "block";
+        attachmentInput.required = true;
+      } else {
+        attachmentDiv.style.display = "none";
+        attachmentInput.required = false;
+        attachmentInput.value = ""; // clear if hidden
+      }
+    });
+  });
+
+  tsParticles.load("tsparticles", {
+    particles: {
+      number: { value: 90, density: { enable: true, area: 800 } },
+      color: { value: "#fff" },
+      shape: { type: "circle" },
+      opacity: { value: 0.5 },
+      size: { value: { min: 1, max: 3 } },
+      links: { enable: true, distance: 200, color: "#fff", opacity: 0.3, width: 1 },
+      move: { enable: true, speed: 1, outModes: "out" }
+    },
+
+    interactivity: {
+      events: {
+        onHover: { enable: true, mode: "grab" },
+        onClick: { enable: true, mode: "push" }
+      },
+      modes: {
+        grab: { distance: 280, links: { opacity: 0.5 } },
+        push: { quantity: 3 }
+      }
+    },
+
+    detectRetina: true
+  });
+
+  // Check Balance Button Logic
+  // Check Balance Button Logic
+  document.getElementById("checkBalanceBtn").addEventListener("click", function () {
+    const email = document.getElementById("email").value;
+    const resultModalEl = document.getElementById("resultModal");
+    const resultModal = new bootstrap.Modal(resultModalEl);
+    const resultBody = document.getElementById("resultModalBody");
+
+    if (!email) {
+      resultBody.innerHTML = '<div class="alert alert-warning">Please enter your email address first to check your balance.</div>';
+      resultModal.show();
+      return;
     }
 
-    document.getElementById("footerYear").textContent = new Date().getFullYear();
+    const btn = this;
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "Checking...";
 
-    // Department dropdown
-    document.querySelectorAll('.dept-option').forEach(item => {
-        item.addEventListener('click', function () {
-            const value = this.getAttribute('data-value');
-            document.getElementById('departmentText').innerText = value;
-            document.getElementById('department').value = value;
-        });
-    });
-
-    // Leave Type dropdown
-    document.querySelectorAll('.leave-option').forEach(item => {
-        item.addEventListener('click', function () {
-            const value = this.getAttribute('data-value');
-            document.getElementById('leaveTypeText').innerText = value;
-            document.getElementById('leaveType').value = value;
-        });
-    });
-
-    tsParticles.load("tsparticles", {
-        particles: {
-            number: { value: 90, density: { enable: true, area: 800 } },
-            color: { value: "#fff" },
-            shape: { type: "circle" },
-            opacity: { value: 0.5 },
-            size: { value: { min: 1, max: 3 } },
-            links: { enable: true, distance: 200, color: "#fff", opacity: 0.3, width: 1 },
-            move: { enable: true, speed: 1, outModes: "out" }
-        },
-
-        interactivity: {
-            events: {
-                onHover: { enable: true, mode: "grab" },
-                onClick: { enable: true, mode: "push" }
-            },
-            modes: {
-                grab: { distance: 280, links: { opacity: 0.5 } },
-                push: { quantity: 3 }
-            }
-        },
-
-        detectRetina: true
-    });
+    google.script.run
+      .withSuccessHandler((balance) => {
+        btn.disabled = false;
+        btn.innerText = originalText;
+        if (!balance) {
+          resultBody.innerHTML = `<div class="alert alert-danger"><strong>Email Not Found</strong><br>The email <code>${escapeHtml(email)}</code> is not registered in our system.</div>`;
+        } else {
+          resultBody.innerHTML = `
+            <div class="text-center">
+              <h5>Leave Balance for:</h5>
+              <p class="text-primary fw-bold">${escapeHtml(email)}</p>
+              <hr>
+              <div class="row">
+                <div class="col-6 border-end">
+                  <h6 class="text-muted">Annual Leave</h6>
+                  <h2 class="display-6 text-success">${balance.leave}</h2>
+                  <small>days</small>
+                </div>
+                <div class="col-6">
+                  <h6 class="text-muted">Sick Leave</h6>
+                  <h2 class="display-6 text-info">${balance.sick}</h2>
+                  <small>days</small>
+                </div>
+              </div>
+            </div>`;
+        }
+        resultModal.show();
+      })
+      .withFailureHandler((e) => {
+        btn.disabled = false;
+        btn.innerText = originalText;
+        resultBody.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${e}</div>`;
+        resultModal.show();
+      })
+      .getLeaveBalanceByEmail(email);
+  });
 </script>
 
 <script>
-    flatpickr("#firstDay", {
-        dateFormat: "d-m-Y",
-        altInput: true,
-        altFormat: "F j, Y",
-        onChange: calculateWorkingDays
-    });
+  flatpickr("#firstDay", {
+    dateFormat: "d-m-Y",
+    altInput: true,
+    altFormat: "F j, Y",
+    onChange: calculateWorkingDays
+  });
 
-    flatpickr("#lastDay", {
-        dateFormat: "d-m-Y",
-        altInput: true,
-        altFormat: "F j, Y",
-        onChange: calculateWorkingDays
-    });
+  flatpickr("#lastDay", {
+    dateFormat: "d-m-Y",
+    altInput: true,
+    altFormat: "F j, Y",
+    onChange: calculateWorkingDays
+  });
 
-    function parseDMY(dmy) {
-        const [day, month, year] = dmy.split('-').map(Number);
-        return new Date(year, month - 1, day);
+  function parseDMY(dmy) {
+    const [day, month, year] = dmy.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  function calculateWorkingDays(startDateStr, endDateStr) {
+    const startStr = document.getElementById("firstDay").value;
+    const endStr = document.getElementById("lastDay").value;
+    const startDate = parseDMY(startStr);
+    const endDate = parseDMY(endStr);
+
+    // Validasi
+    if (!startDate || !endDate || startDate > endDate) {
+      document.getElementById("totalDays").value = "";
+      return;
     }
 
-    function calculateWorkingDays(startDateStr, endDateStr) {
-        const startStr = document.getElementById("firstDay").value;
-        const endStr = document.getElementById("lastDay").value;
-        const startDate = parseDMY(startStr);
-        const endDate = parseDMY(endStr);
+    let daysCount = 0;
+    let current = new Date(startDate);
 
-        // Validasi
-        if (!startDate || !endDate || startDate > endDate) {
-            document.getElementById("totalDays").value = "";
-            return;
-        }
-
-        let daysCount = 0;
-        let current = new Date(startDate);
-
-        while (current <= endDate) {
-            const day = current.getDay();
-            // 0 = Sunday, 6 = Saturday → skip
-            if (day !== 0 && day !== 6) {
-                daysCount++;
-            }
-            current.setDate(current.getDate() + 1);
-        }
-
-        document.getElementById("totalDays").value = daysCount;
+    while (current <= endDate) {
+      const day = current.getDay();
+      // 0 = Sunday, 6 = Saturday → skip
+      if (day !== 0 && day !== 6) {
+        daysCount++;
+      }
+      current.setDate(current.getDate() + 1);
     }
 
-    function calculateWorkingDaysSync(startStr, endStr) {
-        const startDate = parseDMY(startStr);
-        const endDate = parseDMY(endStr);
-        if (!startDate || !endDate || startDate > endDate) return 0;
+    document.getElementById("totalDays").value = daysCount;
+  }
 
-        let days = 0;
-        const current = new Date(startDate);
+  function calculateWorkingDaysSync(startStr, endStr) {
+    const startDate = parseDMY(startStr);
+    const endDate = parseDMY(endStr);
+    if (!startDate || !endDate || startDate > endDate) return 0;
 
-        while (current <= endDate) {
-            const day = current.getDay();
-            if (day !== 0 && day !== 6) days++;
-            current.setDate(current.getDate() + 1);
-        }
+    let days = 0;
+    const current = new Date(startDate);
 
-        return days;
+    while (current <= endDate) {
+      const day = current.getDay();
+      if (day !== 0 && day !== 6) days++;
+      current.setDate(current.getDate() + 1);
     }
 
-    function isLeaveBalanceEnough(balance, leaveType, requestedDays) {
-        const available = leaveType === "Sick Leave" ? balance.sick : balance.leave;
-        return requestedDays <= available;
+    return days;
+  }
+
+  function isLeaveBalanceEnough(balance, leaveType, requestedDays) {
+    const available = leaveType === "Sick Leave" ? balance.sick : balance.leave;
+    return requestedDays <= available;
+  }
+
+  let isSuccess = false;
+
+  document.getElementById("leaveForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const department = document.getElementById("department").value;
+    const leaveType = document.getElementById("leaveType").value;
+    const firstDay = document.getElementById("firstDay").value;
+    const lastDay = document.getElementById("lastDay").value;
+    const reason = document.getElementById("reason").value.trim();
+    const attachmentInput = document.getElementById("attachment");
+
+    // Check attachment for Sick Leave
+    if (leaveType === "Sick Leave") {
+      if (attachmentInput.files.length === 0) {
+        alert("Please upload a Medical Certificate for Sick Leave.");
+        return;
+      }
+      const file = attachmentInput.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size exceeds 5MB limit.");
+        return;
+      }
     }
 
-    let isSuccess = false;
+    if (!name || !email || !department || !leaveType || !firstDay || !lastDay || !reason) {
+      alert("Please fill in all required fields.");
+      return;
+    }
 
-    document.getElementById("leaveForm").addEventListener("submit", function (e) {
-        e.preventDefault();
+    const submitBtn = document.getElementById("submitBtn");
+    const loadingScreen = document.getElementById("loadingScreen");
+    const resultModalEl = document.getElementById("resultModal");
+    const resultModal = new bootstrap.Modal(resultModalEl);
+    const resultBody = document.getElementById("resultModalBody");
+    const modalFooter = document.getElementById("resultModalFooter");
 
-        const name = document.getElementById("name").value.trim();
-        const email = document.getElementById("email").value.trim();
-        const department = document.getElementById("department").value;
-        const leaveType = document.getElementById("leaveType").value;
-        const firstDay = document.getElementById("firstDay").value;
-        const lastDay = document.getElementById("lastDay").value;
-        const reason = document.getElementById("reason").value.trim();
+    isSuccess = false;
+    submitBtn.disabled = true;
+    loadingScreen.style.display = "block";
 
-        if (!name || !email || !department || !leaveType || !firstDay || !lastDay || !reason) {
-            alert("Please fill in all required fields.");
-            return;
-        }
+    const requestedDays = calculateWorkingDaysSync(firstDay, lastDay);
 
-        const submitBtn = document.getElementById("submitBtn");
-        const loadingScreen = document.getElementById("loadingScreen");
-        const resultModalEl = document.getElementById("resultModal");
-        const resultModal = new bootstrap.Modal(resultModalEl);
-        const resultBody = document.getElementById("resultModalBody");
-        const modalFooter = document.getElementById("resultModalFooter");
+    // Skip balance validation for WFH and Unpaid Leave
+    if (leaveType === "Working From Home (WFH)" || leaveType === "Unpaid Leave - FT" || leaveType === "Unpaid Leave - ITN" || leaveType === "Other") {
+      proceedToSubmit();
+      return;
+    }
 
-        isSuccess = false;
-        submitBtn.disabled = true;
-        loadingScreen.style.display = "block";
+    // Validate leave balance
+    google.script.run
+      .withSuccessHandler((balance) => {
+        if (!balance) {
+          loadingScreen.style.display = "none";
 
-        const requestedDays = calculateWorkingDaysSync(firstDay, lastDay);
+          const emailField = document.getElementById("email");
+          emailField.classList.add("is-invalid");
 
-        // Skip balance validation for WFH and Unpaid Leave
-        if (leaveType === "Working From Home (WFH)" || leaveType === "Unpaid Leave - FT" || leaveType === "Unpaid Leave - ITN" || leaveType === "Other") {
-            proceedToSubmit();
-            return;
-        }
-
-        // Validate leave balance
-        google.script.run
-            .withSuccessHandler((balance) => {
-                if (!balance) {
-                    loadingScreen.style.display = "none";
-
-                    const emailField = document.getElementById("email");
-                    emailField.classList.add("is-invalid");
-
-                    resultBody.innerHTML = `
+          resultBody.innerHTML = `
             <div class="alert alert-danger text-dark">
               <strong>Email Not Registered</strong><br><br>
               Your email <code>${escapeHtml(email)}</code> is not registered in our system.<br>
               Are you sure thats your office email?
             </div>`;
 
-                    resultModal.show();
-                    submitBtn.disabled = false;
-                    submitBtn.innerText = "Submit Request";
-                    return;
-                } else {
-                    document.getElementById("email").classList.remove("is-invalid");
-                }
+          resultModal.show();
+          submitBtn.disabled = false;
+          submitBtn.innerText = "Submit Request";
+          return;
+        } else {
+          document.getElementById("email").classList.remove("is-invalid");
+        }
 
-                if (!isLeaveBalanceEnough(balance, leaveType, requestedDays)) {
-                    const available = leaveType === "Sick Leave" ? balance.sick : balance.leave;
-                    loadingScreen.style.display = "none";
-                    resultBody.innerHTML = `
+        if (!isLeaveBalanceEnough(balance, leaveType, requestedDays)) {
+          const available = leaveType === "Sick Leave" ? balance.sick : balance.leave;
+          loadingScreen.style.display = "none";
+          resultBody.innerHTML = `
             <div class="alert alert-warning text-dark">
               <strong>Submission Rejected:</strong><br><br>
               Your request is for <strong>${requestedDays}</strong> day(s) of <strong>${leaveType}</strong>.<br>
@@ -506,39 +605,63 @@
               Kindly reach out to HR for further information.
             </div>`;
 
-                    resultModal.show();
-                    submitBtn.disabled = false;
-                    submitBtn.innerText = "Submit Request";
-                    return;
-                }
+          resultModal.show();
+          submitBtn.disabled = false;
+          submitBtn.innerText = "Submit Request";
+          return;
+        }
 
-                proceedToSubmit(balance);
-            })
-            .withFailureHandler(() => {
-                loadingScreen.style.display = "none";
-                resultBody.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> Could not fetch leave balance. Please try again.</div>`;
-                resultModal.show();
-                submitBtn.disabled = false;
-                submitBtn.innerText = "Submit Request";
-            })
-            .getLeaveBalanceByEmail(email);
 
-        function proceedToSubmit(balanceInfo = null) {
-            google.script.run
-                .withSuccessHandler((result) => {
-                    loadingScreen.style.display = "none";
 
-                    if (result === "Success") {
-                        const balanceContent = balanceInfo
-                            ? `
+        if (leaveType === "Sick Leave") {
+          // Read file first
+          const file = document.getElementById("attachment").files[0];
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const base64Only = e.target.result.split(",")[1];
+            const fileData = {
+              name: file.name,
+              mimeType: file.type,
+              content: base64Only
+            };
+            proceedToSubmit(balance, fileData);
+          };
+          reader.onerror = function () {
+            alert("Error reading file.");
+            loadingScreen.style.display = "none";
+            submitBtn.disabled = false;
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+
+        proceedToSubmit(balance, null);
+      })
+      .withFailureHandler(() => {
+        loadingScreen.style.display = "none";
+        resultBody.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> Could not fetch leave balance. Please try again.</div>`;
+        resultModal.show();
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Submit Request";
+      })
+      .getLeaveBalanceByEmail(email);
+
+    function proceedToSubmit(balanceInfo = null, fileData = null) {
+      google.script.run
+        .withSuccessHandler((result) => {
+          loadingScreen.style.display = "none";
+
+          if (result === "Success") {
+            const balanceContent = balanceInfo
+              ? `
               <p>Your current leave balance:</p>
               <ul>
                 <li>Annual Leave: <strong>${balanceInfo.leave}</strong> days</li>
                 <li>Sick Leave: <strong>${balanceInfo.sick}</strong> days</li>
               </ul>`
-                            : `<p class="text-muted">No balance check required for this leave type.</p>`;
+              : `<p class="text-muted">No balance check required for this leave type.</p>`;
 
-                        resultBody.innerHTML = `
+            resultBody.innerHTML = `
               <div class="alert alert-success">
                 <strong>Success!</strong> Your leave request has been submitted.
                 <hr>
@@ -547,64 +670,64 @@
                 <p class="text-dark"><strong>Note:</strong> If your remaining leave balance is insufficient, the request will be automatically rejected.</p>
               </div>`;
 
-                        modalFooter.innerHTML = `
+            modalFooter.innerHTML = `
               <button type="button" class="btn btn-outline-info" id="newFormBtn">Make a New Request</button>
               <button type="button" class="btn btn-outline-danger" id="closeTabBtn">Close This Tab</button>`;
 
-                        resultModal.show();
-                        submitBtn.innerText = "Success 🎉";
-                        isSuccess = true;
+            resultModal.show();
+            submitBtn.innerText = "Success 🎉";
+            isSuccess = true;
 
-                        setTimeout(() => {
-                            document.getElementById("newFormBtn").addEventListener("click", () => {
-                                document.getElementById("leaveForm").reset();
-                                submitBtn.disabled = false;
-                                submitBtn.innerText = "Submit Request";
-                                resultModal.hide();
-                            });
+            setTimeout(() => {
+              document.getElementById("newFormBtn").addEventListener("click", () => {
+                document.getElementById("leaveForm").reset();
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Submit Request";
+                resultModal.hide();
+              });
 
-                            document.getElementById("closeTabBtn").addEventListener("click", () => {
-                                resultBody.innerHTML = `<div class="alert alert-info">Thank you. This tab will close shortly...</div>`;
-                                modalFooter.innerHTML = '';
-                                setTimeout(() => {
-                                    window.close();
-                                    setTimeout(() => {
-                                        if (!window.closed) {
-                                            resultBody.innerHTML = `
+              document.getElementById("closeTabBtn").addEventListener("click", () => {
+                resultBody.innerHTML = `<div class="alert alert-info">Thank you. This tab will close shortly...</div>`;
+                modalFooter.innerHTML = '';
+                setTimeout(() => {
+                  window.close();
+                  setTimeout(() => {
+                    if (!window.closed) {
+                      resultBody.innerHTML = `
                         <div class="alert alert-warning text-dark">
                           <strong>Notice:</strong> Your browser prevented this tab from closing automatically.<br>
                           You can safely close this tab now.
                         </div>`;
-                                        }
-                                    }, 1500);
-                                }, 1000);
-                            });
-                        }, 100);
-                    } else {
-                        resultBody.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${result}</div>`;
-                        resultModal.show();
-                        submitBtn.disabled = false;
-                        submitBtn.innerText = "Submit Request";
                     }
-                })
-                .withFailureHandler(() => {
-                    loadingScreen.style.display = "none";
-                    resultBody.innerHTML = `<div class="alert alert-danger"><strong>Submission Failed:</strong> Please try again later or refresh this page.</div>`;
-                    resultModal.show();
-                    submitBtn.disabled = false;
-                    submitBtn.innerText = "Submit Request";
-                })
-                .submitRequest(name, email, department, leaveType, firstDay, lastDay, reason);
-        }
+                  }, 1500);
+                }, 1000);
+              });
+            }, 100);
+          } else {
+            resultBody.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${result}</div>`;
+            resultModal.show();
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Submit Request";
+          }
+        })
+        .withFailureHandler(() => {
+          loadingScreen.style.display = "none";
+          resultBody.innerHTML = `<div class="alert alert-danger"><strong>Submission Failed:</strong> Please try again later or refresh this page.</div>`;
+          resultModal.show();
+          submitBtn.disabled = false;
+          submitBtn.innerText = "Submit Request";
+        })
+        .submitRequest(name, email, department, leaveType, firstDay, lastDay, reason, fileData);
+    }
 
-        resultModalEl.addEventListener('hidden.bs.modal', () => {
-            if (isSuccess) {
-                document.getElementById("leaveForm").reset();
-                submitBtn.disabled = false;
-                submitBtn.innerText = "Submit Request";
-            }
-        }, { once: true });
-    });
+    resultModalEl.addEventListener('hidden.bs.modal', () => {
+      if (isSuccess) {
+        document.getElementById("leaveForm").reset();
+        submitBtn.disabled = false;
+        submitBtn.innerText = "Submit Request";
+      }
+    }, { once: true });
+  });
 </script>
 
 <!-- Here list of my nice music 
@@ -671,6 +794,11 @@
 
 <script src="https://www.youtube.com/iframe_api"></script> -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Initialize Bootstrap Popovers
+  const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+  const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+</script>
 </body>
 
 </html>

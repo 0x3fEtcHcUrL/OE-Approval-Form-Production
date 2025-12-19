@@ -8,7 +8,8 @@
  * Date: November 24, 2025
  */
 
-const MAINTENANCE_MODE = false; // Toggle this to false to bring site back online
+// Maintenance Mode is now controlled via "Settings" sheet.
+// const MAINTENANCE_MODE = false;
 
 // // Pop-Up Welcome Message
 // function onOpen() {
@@ -46,23 +47,86 @@ const MAINTENANCE_MODE = false; // Toggle this to false to bring site back onlin
 // ------------------------ End of This is for Testing Only ------------------------
 
 // Global Emails Configuration
-const CONFIG = {
-  REPORTING_EMAILS: ["komang.onederland@gmail.com", "bcc.hrdteam@gmail.com"],
-  GM_EMAIL: "ayu.septyani@educationone.net.au",
-  HR_EMAIL: "dyah.onederland@gmail.com",
-  SPV_MAP: {
-    "Carbon Energy": "ika.widia@carbonenergy.net.au",
-    "Education ONE": "cesco.neurone@gmail.com",                 
-    "English Cafe": "harris.englishcafe@gmail.com",
-    "General Manager": "ayu.septyani@educationone.net.au",
-    "Neurone Recruitment": "cesco.neurone@gmail.com",
-    "ONEderland Consulting": "ayu.karina@onederland.com.au",
-    "ONEderland Enterprise Finance": "sanistya.onederland@gmail.com",
-    "ONEderland Enterprise HRGA": "dyah.onederland@gmail.com",
-    "PeraONE Xperience": "dyah.onederland@gmail.com",
-    "SnG OE": "suma.onederland@gmail.com"
+const CONFIG_CACHE_KEY = "APP_CONFIG_V3";
+const CONFIG_CACHE_TIME = 1800; // 30 minutes
+
+function getConfig() {
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(CONFIG_CACHE_KEY);
+
+  if (cached) {
+    console.log("Serving Config from Cache");
+    return JSON.parse(cached);
   }
-};
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Settings");
+  if (!sheet) {
+    throw new Error("Critical Error: 'Settings' sheet not found. Please contact Administrator.");
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const config = {
+    MAINTENANCE_MODE: false, // Default value
+    REPORTING_EMAILS: [],
+    GM_EMAIL: "",
+    HR_EMAIL: "",
+    SPV_MAP: {}
+  };
+
+  // Start from row 1 (index 1) assuming header row 0
+  for (let i = 1; i < data.length; i++) {
+    const key = String(data[i][0]).trim();
+    const value = String(data[i][1]).trim();
+
+    if (!key) continue;
+
+    if (key === "REPORTING_EMAILS") {
+      config.REPORTING_EMAILS = value.split(",").map(e => e.trim());
+    } else if (key === "GM_EMAIL") {
+      config.GM_EMAIL = value;
+    } else if (key === "HR_EMAIL") {
+      config.HR_EMAIL = value;
+    } else if (key === "TEST_MODE") {
+      config.TEST_MODE = value.toUpperCase() === "TRUE";
+    } else if (key === "TEST_EMAIL") {
+      config.TEST_EMAIL = value;
+    } else if (key === "MAINTENANCE_MODE") {
+      config.MAINTENANCE_MODE = value.toString().toUpperCase() === "TRUE";
+    } else {
+      // Assume all other keys are Departments for SPV_MAP
+      config.SPV_MAP[key] = value;
+    }
+  }
+
+  // --- TEST MODE OVERRIDE ---
+  if (config.TEST_MODE && config.TEST_EMAIL) {
+    console.warn("⚠️ TEST MODE ACTIVE: Redirecting all emails to " + config.TEST_EMAIL);
+    config.REPORTING_EMAILS = [config.TEST_EMAIL];
+    config.GM_EMAIL = config.TEST_EMAIL;
+    config.HR_EMAIL = config.TEST_EMAIL;
+    
+    // Override all SPV emails
+    Object.keys(config.SPV_MAP).forEach(dept => {
+      config.SPV_MAP[dept] = config.TEST_EMAIL;
+    });
+  }
+
+  console.log("Config loaded from Sheet and Cached");
+  cache.put(CONFIG_CACHE_KEY, JSON.stringify(config), CONFIG_CACHE_TIME);
+
+  return config;
+}
+
+/**
+ * Clears the config cache. Run this after changing Settings sheet.
+ */
+function clearConfigCache() {
+  CacheService.getScriptCache().remove(CONFIG_CACHE_KEY);
+  Logger.log("✅ Config cache cleared. Next request will reload from Settings sheet.");
+}
+
+// Initialize Dynamic Configuration
+const CONFIG = getConfig();
 
 // Column indices
 const COLUMNS = {
@@ -94,7 +158,8 @@ const COLUMNS = {
   // BEREA_BALANCE: 26     // Column Z
   // MARRIAGE_BALANCE: 27  // Column AA
   // MATERNITY_BALANCE: 28 // Column AB
-  REF_ID: 43
+  REF_ID: 43,
+  CALENDAR_STATUS: 45 // Column AS (New for Calendar Queue)
 };
 
 /**
@@ -103,9 +168,30 @@ const COLUMNS = {
  * @return {Date} A JavaScript Date object.
  */
 
+function getProfileName() {
+  try {
+    const people = People.People.get('people/me', { personFields: 'names' });
+    if (people.names && people.names.length > 0) {
+      return people.names[0].displayName;
+    }
+  } catch (e) {
+    console.warn("Failed to fetch profile name via People API: " + e.toString());
+  }
+  return null;
+}
+
 function getCurrentUser() {
   const cache = CacheService.getUserCache();
   const props = PropertiesService.getUserProperties();
+  
+  // Try to fetch fresh name if possible
+  const freshName = getProfileName();
+  if (freshName) {
+     return {
+       name: freshName,
+       email: Session.getActiveUser().getEmail()
+     };
+  }
 
   return {
     name: cache.get("userName") || props.getProperty("userName") || "Unknown User",
@@ -198,7 +284,7 @@ function showErrorTokenPage(title, message) {
 
 function doGet(e) {
 
-  if (MAINTENANCE_MODE) {
+  if (CONFIG.MAINTENANCE_MODE) {
     Logger.log("Maintenance mode active — showing maintenance page.");
     return showMaintenancePage();
   }
@@ -219,6 +305,16 @@ function doGet(e) {
 
     Logger.log(`Rendering rejectWithNotes template for row ${row} at stage ${stage}`);
     return template.evaluate().setTitle('Reject with Notes');
+  }
+
+  // --- DASHBOARD ROUTE ---
+  if (page === 'dashboard') {
+    const user = Session.getActiveUser().getEmail();
+    const pendingRequests = getPendingApprovals(user);
+    const template = HtmlService.createTemplateFromFile('dashboard');
+    template.userEmail = user;
+    template.requests = pendingRequests;
+    return template.evaluate().setTitle("Approver Dashboard");
   }
 
   if (page === 'privacy') {
@@ -264,17 +360,100 @@ function doGet(e) {
     return HtmlService.createHtmlOutput(renderTrackingPage(email, showHistory)).setTitle("Track My Leave Request");
   }
 
+  // --- HANDLE CANCELLATION ---
+  if (action === 'cancel' && e.parameter.refID) {
+    const result = cancelRequest(e.parameter.refID);
+    const activeEmail = Session.getActiveUser().getEmail();
+    const trackingUrl = `${ScriptApp.getService().getUrl()}?track=${encodeURIComponent(activeEmail)}`;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <base target="_top">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+        <style>
+          body { 
+            background-color: #f4f6f9; 
+            font-family: 'Inter', sans-serif;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+          }
+          .card { 
+            max-width: 450px; 
+            width: 90%; 
+            border: none; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            background: white;
+            padding: 2rem;
+          }
+          .icon-box {
+            width: 80px;
+            height: 80px;
+            background: ${result.success ? '#e6f4ea' : '#fce8e6'};
+            color: ${result.success ? '#1e8e3e' : '#d93025'};
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin: 0 auto 1.5rem;
+          }
+          h3 { font-weight: 600; color: #333; margin-bottom: 0.5rem; }
+          p { color: #666; margin-bottom: 2rem; line-height: 1.5; }
+          .btn-custom {
+            background-color: ${result.success ? '#1a73e8' : '#6c757d'};
+            color: white;
+            font-weight: 600;
+            padding: 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            display: block;
+            width: 100%;
+            transition: opacity 0.2s;
+          }
+          .btn-custom:hover { opacity: 0.9; color: white; }
+        </style>
+      </head>
+      <body>
+        <div class="card text-center">
+          <div class="icon-box">
+            ${result.success ? '✓' : '✕'}
+          </div>
+          <h3>${result.success ? 'Request Cancelled' : 'Cancellation Failed'}</h3>
+          <p>${result.success ? 'Your leave request has been successfully withdrawn. Notifications have been stopped.' : result.message}</p>
+          <a href="${trackingUrl}" class="btn-custom">Back to My Requests</a>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    return HtmlService.createHtmlOutput(htmlContent)
+      .setTitle(result.success ? "Request Cancelled" : "Cancellation Error")
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   try {
     const activeUser = Session.getActiveUser().getEmail();
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
 
     if (!e || !e.parameter.action || !e.parameter.row) {
 
-      const user = getCurrentUser(); // ← now safe
+      // Use Session.getActiveUser() directly to bypass Cache/Properties if possible for internal users
+      const activeEmail = Session.getActiveUser().getEmail();
+      const profileName = getProfileName(); // Fetch name from People API
+      const user = getCurrentUser(); // Fallback to cache/properties logic
 
       const template = HtmlService.createTemplateFromFile('form');
-      template.userEmail = user.email;
-      template.userName = user.name;
+      template.detectedEmail = activeEmail; // Explicit flag for internal users
+      template.detectedName = profileName;  // Pass detected name
+      template.userEmail = activeEmail || user.email; 
+      template.userName = profileName || user.name;
 
       // Logger.log(`Showing form for: ${user.email}`);
       return template.evaluate()
@@ -368,82 +547,40 @@ function doGet(e) {
         gm: COLUMNS.GM_TOKEN
       }[stageParam.toLowerCase()];
 
-      // // Get email of current Google user
-      // const currentUserEmail = Session.getActiveUser().getEmail().toLowerCase();
-      // const spvEmail = (data[COLUMNS.SPV_EMAIL - 1] || "").toLowerCase();
-      // const hrEmail = (data[COLUMNS.HR_EMAIL - 1] || "").toLowerCase();
-      // const gmEmail = (data[COLUMNS.GM_EMAIL - 1] || "").toLowerCase();
-
-      // let expectedApprover = "";
-
-      // if (stageParam === "spv") expectedApprover = spvEmail;
-      // else if (stageParam === "hr") expectedApprover = hrEmail;
-      // else if (stageParam === "gm") expectedApprover = gmEmail;
-      // else return showErrorTokenPage("Invalid Stage", "Unknown stage: " + stageParam);
-
-      // if (currentUserEmail !== expectedApprover) {
-      //   Logger.log(`[TOKEN CHECK] Unauthorized Approver - Expected: ${expectedApprover}, Got: ${currentUserEmail}`);
-      //   return showErrorTokenPage("Unauthorized Approver", `Whoopzz Whoopzz <code>${currentUserEmail}</code>, <br>You're not authorized to approve this request<br>for stage <b>${currentStage}</b>.`);
-      // }
-
-      // // Check saved token
-      // const savedToken = sheet.getRange(rowIndex, tokenColumn).getValue();
-      // Logger.log(`[TOKEN CHECK] Comparing tokens - savedToken: ${savedToken}, tokenToUse: ${tokenToUse}, stage: ${validStage} vs ${tokenColumn}`);
-
-      // if (validStage !== tokenColumn || savedToken !== tokenToUse || savedToken.endsWith("_used")) {
-      //   Logger.log(`[TOKEN CHECK] Token Mismatch or Already Used - validStage: ${validStage}, tokenColumn: ${tokenColumn}, token: ${savedToken}`);
-      //   return showErrorTokenPage(
-      //     "You've Already Responded",
-      //     `Looks like you've already taken action on this request.<br>Current stage: <strong>${currentStage}</strong>.`
-      //   );
-      // }
-
-      // --------------------- Testing Here -----------------
-      // Expected approver email from sheet
+      // Get email of current Google user
+      const currentUserEmail = Session.getActiveUser().getEmail().toLowerCase();
       const spvEmail = (data[COLUMNS.SPV_EMAIL - 1] || "").toLowerCase();
       const hrEmail = (data[COLUMNS.HR_EMAIL - 1] || "").toLowerCase();
       const gmEmail = (data[COLUMNS.GM_EMAIL - 1] || "").toLowerCase();
 
       let expectedApprover = "";
+
       if (stageParam === "spv") expectedApprover = spvEmail;
       else if (stageParam === "hr") expectedApprover = hrEmail;
       else if (stageParam === "gm") expectedApprover = gmEmail;
       else return showErrorTokenPage("Invalid Stage", "Unknown stage: " + stageParam);
 
-      // Get token stored in sheet for this stage
+      // 🔒 SECURITY CHECK — User must match expected approver
+      if (currentUserEmail && currentUserEmail !== expectedApprover) {
+        Logger.log(`[TOKEN CHECK] Unauthorized Approver - Expected: ${expectedApprover}, Got: ${currentUserEmail}`);
+        return showErrorTokenPage(
+          "Unauthorized Approver",
+          `Whoopzz Whoopzz <code>${currentUserEmail}</code>, <br>You're not authorized to approve this request<br>for stage <b>${currentStage}</b>.`
+        );
+      }
+
+      // Check saved token
       const savedToken = sheet.getRange(rowIndex, tokenColumn).getValue();
-      Logger.log(`[TOKEN CHECK] Tokens - saved: ${savedToken}, received: ${tokenToUse}`);
+      Logger.log(`[TOKEN CHECK] Comparing tokens - savedToken: ${savedToken}, tokenToUse: ${tokenToUse}`);
 
-      // Check token existence and stage
-      if (!savedToken || validStage !== tokenColumn) {
-        Logger.log("[TOKEN CHECK] Token missing or wrong stage");
-        return showErrorTokenPage("Invalid Link", "This approval link is not valid for the current stage.");
+      if (!savedToken || validStage !== tokenColumn || savedToken !== tokenToUse || savedToken.endsWith("_used")) {
+        Logger.log(`[TOKEN CHECK] Token Mismatch or Already Used - validStage: ${validStage}, tokenColumn: ${tokenColumn}, token: ${savedToken}`);
+        return showErrorTokenPage(
+          "You've Already Responded",
+          `Looks like you've already taken action on this request.<br>Current stage: <strong>${currentStage}</strong>.`
+        );
       }
 
-      // Check if token already used
-      if (savedToken.endsWith("_used")) {
-        Logger.log("[TOKEN CHECK] Token already used");
-        return showErrorTokenPage("Link Already Used", "This request has already been processed.");
-      }
-
-      // Because of limitation of USER_DEPLOYING & USER_ACCESSING in appsscript.json, we decide to disable this function.
-      // As we know we have this feature to prevent un-authorized approver, since we moved  to execute the request as a code owner
-      // this security check is being disable.
-
-      // 🔒 SECURITY CHECK — Token must contain expected approver’s email
-      // if (!savedToken.includes(expectedApprover)) {
-      //   Logger.log(`[TOKEN CHECK] Email mismatch! Expected: ${expectedApprover}, Token: ${savedToken}`);
-      //   return showErrorTokenPage(
-      //     "Not Your Approval",
-      //     `Oops! This link is assigned to <b>${expectedApprover}</b> — not you.`
-      //   );
-      // }
-
-      // Check if token matches exactly
-      if (savedToken !== tokenToUse) {
-        Logger.log("[TOKEN CHECK] Token mismatch!");
-        return showErrorTokenPage("Invalid Token", "The token in this link does not match our records.");
-      }
 
       Logger.log(`[TOKEN CHECK] SUCCESS — Approver validated: ${expectedApprover}`);
 
@@ -518,7 +655,8 @@ function doGet(e) {
       const cekSick = leaveTypes.sick.includes(leaveType);
       const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue(); // Column AQ        
 
-      if ((cekAnnual || cekSick) && days > applicableBalance) {
+      // === Start Balance Validation Logic (Only on APPROVE action) ===
+      if (action === 'approve' && (cekAnnual || cekSick) && days > applicableBalance) {
         const rejectionNote = performAutoReject(
           rowIndex,                          // 1
           applicableBalance,                // 2
@@ -711,20 +849,17 @@ function doGet(e) {
         template.spvStatus = values[COLUMNS.SPV_DECISION - 1] || "—";
         template.hrStatus = values[COLUMNS.HR_DECISION - 1] || "—";
         template.gmStatus = values[COLUMNS.GM_DECISION - 1] || "—";
+        template.attachmentUrl = values[43] || null; // Column 44 (index 43)
 
         const htmlBody = template.evaluate().getContent();
 
-        GmailApp.sendEmail(
+        queueEmail(
           requester,
           `ONEderland Leave/WFH Request Rejected: ${name}`,
-          '', // plain text fallback (leave blank if using only HTML)
-          {
-            htmlBody: htmlBody,
-            name: "ONEderland Approval System"
-          }
+          htmlBody
         );
 
-        Logger.log(`Rejection email sent to: ${requester}`);
+        Logger.log(`Rejection email queued for: ${requester}`);
 
         nextStage = 'Final (Rejected)';
         Logger.log(`Stage set to: ${nextStage}`);
@@ -795,12 +930,15 @@ function doGet(e) {
   }
 }
 
-function submitRequest(name, email, department, leaveType, startDate, endDate, reason) {
+function submitRequest(name, email, department, leaveType, startDate, endDate, reason, fileData) {
   try {
     const sheet = SpreadsheetApp.getActive().getSheetByName("Requests");
     const spvEmail = CONFIG.SPV_MAP[department] || CONFIG.GM_EMAIL; // Default to GM if SPV not found
     const hrEmail = CONFIG.HR_EMAIL;
     const gmEmail = CONFIG.GM_EMAIL;
+
+    Logger.log(`[DEBUG] Config Loaded. Test Mode: ${CONFIG.TEST_MODE}`);
+    Logger.log(`[DEBUG] Resolved Emails - SPV: ${spvEmail}, HR: ${hrEmail}, GM: ${gmEmail}`);
 
     const firstDate = parseDMYDate(startDate);
     const lastDate = parseDMYDate(endDate);
@@ -932,7 +1070,13 @@ function submitRequest(name, email, department, leaveType, startDate, endDate, r
     // Generate RefID for this submission
     let refID = generateReferenceID();
 
+    // --- QUEUE FILE UPLOAD (Processed by Trigger as Owner) ---
+    // We'll queue after the row is created so we have the row number
+    let hasFileToQueue = fileData && fileData.content;
+    let attachmentUrl = hasFileToQueue ? "Processing..." : "";
+
     // Append the request to the sheet
+    // We append 'attachmentUrl' at the end (Column 44)
     const newRow = sheet.appendRow([
       new Date(), name, department, leaveType,
       firstDate, lastDate, reason,
@@ -950,18 +1094,34 @@ function submitRequest(name, email, department, leaveType, startDate, endDate, r
     // Append row number to RefID
     refID = `${refID}${lastRow}`;
 
-    // Save into AQ
+    // Save into AQ (Column 43)
     sheet.getRange(lastRow, COLUMNS.REF_ID).setValue(refID);
+
+    // Save Attachment URL placeholder into Column 44 (AR)
+    if (attachmentUrl) {
+      sheet.getRange(lastRow, 44).setValue(attachmentUrl); 
+    }
+    
+    // NOW queue the file with the actual row number
+    if (hasFileToQueue) {
+      try {
+        queueFileUpload(fileData.name, fileData.mimeType, fileData.content, lastRow);
+        Logger.log(`File queued for upload: ${fileData.name} for row ${lastRow}`);
+      } catch (err) {
+        Logger.log(`File queue error: ${err.toString()}`);
+        sheet.getRange(lastRow, 44).setValue("Error queuing file");
+      }
+    }
 
     const rowIndex = sheet.getLastRow();
 
     // Send confirmation to requester
     Logger.log(`Sending confirmation email to ${email} with Form ID = ${refID}`);
-    sendSubmissionConfirmation(email, name, leaveType, firstDate, lastDate, reason, stage, refID);
+    sendSubmissionConfirmation(email, name, leaveType, firstDate, lastDate, reason, stage, refID, attachmentUrl, rowIndex);
 
     // Send approval request to next stage
     Logger.log(`Sending approval email to SPV: ${spvEmail}, Form ID = ${refID}`);
-    sendApprovalEmail(name, leaveType, firstDate, lastDate, reason, approvalEmail, stage, rowIndex, tokenToUse, refID);
+    sendApprovalEmail(name, leaveType, firstDate, lastDate, reason, approvalEmail, stage, rowIndex, tokenToUse, refID, attachmentUrl);
 
     Logger.log(`Submit Request completed successfully for ${name} - ${refID}`);
     return "Success";
@@ -994,6 +1154,7 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
   const hrStatus = sheet.getRange(row, COLUMNS.HR_DECISION).getValue() || '';
   const gmStatus = sheet.getRange(row, COLUMNS.GM_DECISION).getValue() || '';
   const department = sheet.getRange(row, COLUMNS.DEPARTMENT).getValue();
+  const attachmentUrl = sheet.getRange(row, 44).getValue(); // Column 44 is attachment URL
   const days = calculateLeaveDays(startDate, endDate);
 
   const leaveTypes = {
@@ -1049,58 +1210,12 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
   sheet.getRange(row, COLUMNS.STAGE).setValue("Completed");
   sheet.getRange(row, COLUMNS.NOTE).setValue(finalNote);
 
-  // === SMART MERGE WEEKDAY EVENTS ===
-  const wfhCalendarId = "63923981f7916d39b1e2cc1dc3f74def45df9578ee045429c2c14256114ff10a@group.calendar.google.com";
-  const leaveCalendarId = "acd3tof9di4puvf3fd046naeks@group.calendar.google.com";
-
-  const targetCalendarId = leaveType === "Working From Home (WFH)" ? wfhCalendarId : leaveCalendarId;
-  const calendar = CalendarApp.getCalendarById(targetCalendarId);
-
-  if (calendar) {
-    const title = `${name}'s - ${leaveType}`;
-    const description =
-      `Form ID: ${refID}\n` +
-      `Department: ${department}\n` +
-      `Note: ${finalNote}`;
-
-    let blockStart = null;
-    let currentDate = new Date(startDate);
-    const finalDate = new Date(endDate);
-
-    while (currentDate <= finalDate) {
-      const day = currentDate.getDay(); // 0=Sunday, 6=Saturday
-
-      if (day !== 0 && day !== 6) {
-        if (!blockStart) {
-          blockStart = new Date(currentDate); // Start a new block
-        }
-      } else {
-        if (blockStart) {
-          const blockEnd = new Date(currentDate);
-          blockEnd.setDate(blockEnd.getDate()); // End boundary (weekend)
-          calendar.createAllDayEvent(title, blockStart, blockEnd, {
-            description
-          });
-          Logger.log(`📅 Created block: ${blockStart} → ${blockEnd}`);
-          blockStart = null;
-        }
-      }
-
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    // Create final block if exists
-    if (blockStart) {
-      const blockEnd = new Date(finalDate);
-      blockEnd.setDate(blockEnd.getDate() + 1);
-      calendar.createAllDayEvent(title, blockStart, blockEnd, {
-        description
-      });
-    }
-
-    Logger.log(`🎯 Completed | ${name}'s ${leaveType} created on calendar: ${targetCalendarId}`);
-  } else {
-    Logger.log(`❌ Calendar not found: ${targetCalendarId}`);
+  // === QUEUE CALENDAR EVENT (for Trigger processing) ===
+  // Instead of creating calendar events directly (which fails in "User Accessing" mode),
+  // we set a status to "Pending" for the Trigger function to pick up.
+  if (decision === "Approved") {
+    sheet.getRange(row, COLUMNS.CALENDAR_STATUS).setValue("Pending");
+    Logger.log(`🗓️ Queued calendar event for row ${row}`);
   }
   // === END ===
 
@@ -1120,14 +1235,13 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
     finalNote,
     updatedBalance,
     refID,
-    row
+
+    row,
+    attachmentUrl: attachmentUrl || null,
   });
 
   const htmlBody = template.evaluate().getContent();
-  GmailApp.sendEmail(requesterEmail, `ONEderland Leave Request ${decision}: ${name}`, '', {
-    htmlBody,
-    name: 'ONEderland Approval System'
-  });
+  queueEmail(requesterEmail, `ONEderland Leave Request ${decision}: ${name}`, htmlBody);
 
   // Reporting Team Notification with Calendar Link
   // const calendarTitle = `${name}'s ${leaveType}`;
@@ -1189,6 +1303,12 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
                 <td style="padding:10px; font-weight:bold; background:#f7f7f7; vertical-align: top;">Note</td>
                 <td style="padding:10px;">${finalNote || 'N/A'}</td>
               </tr>
+              
+              ${attachmentUrl ? `
+              <tr>
+                <td style="padding:10px; font-weight:bold; background:#f7f7f7; vertical-align: top;">Attachment</td>
+                <td style="padding:10px;"><a href="${attachmentUrl}" target="_blank">View Document</a></td>
+              </tr>` : ''}
 
               ${updatedBalance ? `
               <tr>
@@ -1222,10 +1342,7 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
   `;
 
   CONFIG.REPORTING_EMAILS.forEach(email => {
-    GmailApp.sendEmail(email, `Reporting Notification from ${name}`, '', {
-      htmlBody: reportingHtml,
-      name: 'ONEderland Approval System'
-    });
+    queueEmail(email, `Reporting Notification from ${name}`, reportingHtml);
   });
 }
 
@@ -1242,7 +1359,7 @@ function generateCalendarLink(title, startDate, endDate, description) {
   return `https://www.google.com/calendar/render?action=TEMPLATE&text=${calTitle}&dates=${start}/${end}&details=${details}`;
 }
 
-function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approverEmail, stage, row, tokenToUse, refID) {
+function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approverEmail, stage, row, tokenToUse, refID, attachmentUrl) {
   const baseUrl = ScriptApp.getService().getUrl();
 
   const template = HtmlService.createTemplateFromFile("emailtemplate");
@@ -1254,6 +1371,7 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
   template.stage = stage;
   template.refID = refID;
   template.baseUrl = baseUrl;
+  template.attachmentUrl = attachmentUrl || null; // Pass to template
 
   // Extract normalized stage (lowercase) → Used for URL param
   const shortStage = stage.toLowerCase().includes("spv") ? "spv"
@@ -1273,21 +1391,26 @@ function sendApprovalEmail(name, leaveType, startDate, endDate, reason, approver
   template.rejectUrl = `${baseUrl}?action=reject&stage=${shortStage}&row=${row}&token=${encodedToken}&note=`; // will be filled in by user
 
   try {
-    MailApp.sendEmail({
-      to: approverEmail,
-      subject: `[Action Required] Leave/WFH Request: ${name} (${stage})`,
-      htmlBody: template.evaluate().getContent(),
-      name: "ONEderland Approval System"
-    });
-    Logger.log(`✅ Approval email sent to ${approverEmail} for ${name} - ${refID}`);
+    queueEmail(
+      approverEmail,
+      `[Action Required] Leave/WFH Request: ${name} (${stage})`,
+      template.evaluate().getContent(),
+      row // Pass row for attachment URL refresh
+    );
+    Logger.log(`✅ Approval email queued for ${approverEmail} for ${name} - ${refID}`);
   } catch (e) {
-    Logger.log(`❌ Failed to send approval email to ${approverEmail} for ${name} - ${refID}. Error: ${e}`);
+    Logger.log(`❌ Failed to queue approval email for ${approverEmail} for ${name} - ${refID}. Error: ${e}`);
   }
 }
 
-function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, reason, stage, refID) {
+function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, reason, stage, refID, attachmentUrl, sourceRow) {
   const scriptUrl = ScriptApp.getService().getUrl();
   const trackingLink = `${scriptUrl}?track=${encodeURIComponent(email)}`;
+
+  let attachmentHtml = "";
+  if (attachmentUrl) {
+    attachmentHtml = `<tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;"><strong>Attachment</strong></td><td style="padding:8px;border:1px solid #ddd;"><a href="${attachmentUrl}" target="_blank">View Document</a></td></tr>`;
+  }
 
   const htmlBody = `
     <div style="font-family:Arial,sans-serif;max-width:600px; margin:auto; border:1px solid #ddd; padding:20px;">
@@ -1300,6 +1423,7 @@ function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, 
         <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;width:30%;"><strong>Leave Type</strong></td><td style="padding:8px;border:1px solid #ddd;">${leaveType}</td></tr>
         <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;"><strong>Dates</strong></td><td style="padding:8px;border:1px solid #ddd;">${formatDate(startDate)} to ${formatDate(endDate)}</td></tr>
         <tr><td style="padding:8px;border:1px solid #ddd;background-color:#f9f9f9;"><strong>Reason</strong></td><td style="padding:8px;border:1px solid #ddd;">${escapeHtml(reason)}</td></tr>
+        ${attachmentHtml}
       </table>
       
       <p>You can track your leave request status anytime using the link below:</p>
@@ -1315,14 +1439,14 @@ function sendSubmissionConfirmation(email, name, leaveType, startDate, endDate, 
   `;
 
   try {
-    MailApp.sendEmail({
-      to: email,
-      subject: "ONEderland Leave/WFH Request Submission Confirmation",
-      htmlBody: htmlBody,
-      name: "ONEderland Approval System"
-    });
+    queueEmail(
+      email,
+      "ONEderland Leave/WFH Request Submission Confirmation",
+      htmlBody,
+      sourceRow
+    );
   } catch (e) {
-    Logger.log(`Failed to send confirmation email to ${email}. Error: ${e.toString}`);
+    Logger.log(`Failed to queue confirmation email to ${email}. Error: ${e.toString()}`);
   }
 }
 
@@ -1413,7 +1537,9 @@ function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType
   }
 
   // Fetch RefID from sheet
+  // Fetch RefID from sheet
   const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue();
+  const attachmentUrl = sheet.getRange(rowIndex, 44).getValue(); // Column 44
 
   // Final rejection email
   const template = HtmlService.createTemplateFromFile('finalNotification');
@@ -1431,14 +1557,13 @@ function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType
   template.refID = refID;   // properly assigned
   template.updatedBalance = {
     leave: currentLeave,
+    leave: currentLeave,
     sick: currentSick
   };
+  template.attachmentUrl = attachmentUrl || null;
 
   const htmlBody = template.evaluate().getContent();
-  GmailApp.sendEmail(requester, `ONEderland Leave Request Rejected: ${name}`, '', {
-    htmlBody: htmlBody,
-    name: 'ONEderland Approval System'
-  });
+  queueEmail(requester, `ONEderland Leave Request Rejected: ${name}`, htmlBody);
 
   Logger.log('🚨 performAutoReject triggered. Returning note: ' + rejectionNote);
 
@@ -1478,41 +1603,233 @@ function renderTrackingPage(email, showHistory = false) {
   }
 
   let html = `
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <div class="container mt-5">
-      <h2 class="mb-4">${showHistory ? "Leave Request History" : "Pending Leave Requests"} for <code>${email}</code></h2>
-      <table class="table table-bordered table-striped">
-        <thead class="table-light">
-          <tr>
-            <th>Submitted</th>
-            <th>Name</th>
-            <th>Leave Type</th>
-            <th>First Day</th>
-            <th>Last Day</th>
-            <th>Status</th>
-            <th>Stage</th>
-            <th>Form ID</th>
-          </tr>
-        </thead>
-        <tbody>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <base target="_top">
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+      <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+        .table-custom { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .table-custom th { background-color: #f1f3f5; font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
+        .badge-status { font-size: 0.8rem; padding: 0.4em 0.8em; }
+      </style>
+    </head>
+    <body class="p-4">
+    <div class="container">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>${showHistory ? "Leave Request History" : "My Active Requests"}</h2>
+        <a href="${ScriptApp.getService().getUrl()}" class="btn btn-outline-primary">← New Request</a>
+      </div>
+
+      <div class="card border-0 shadow-sm p-3 mb-4">
+        <div class="d-flex align-items-center">
+          <div class="flex-grow-1">
+             <strong>Employee:</strong> ${escapeHtml(email)}
+          </div>
+          <div>
+            <a href="${ScriptApp.getService().getUrl()}?track=${email}&history=${!showHistory}" class="btn btn-sm btn-link text-decoration-none">
+              ${showHistory ? "Hide History (Show Active Only)" : "Show All History"}
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive table-custom">
+        <table class="table table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Name</th>
+              <th>Leave Type</th>
+              <th>Date Range</th>
+              <th>Status</th>
+              <th>Current Stage</th>
+              <th>Form ID</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
   `;
 
+  const scriptUrl = ScriptApp.getService().getUrl();
+
   filteredRows.forEach(row => {
+    const isPending = row[COLUMNS.STATUS - 1].toLowerCase().includes("pending");
+    const refID = row[COLUMNS.REF_ID - 1];
+    const status = row[COLUMNS.STATUS - 1];
+    
+    let badgeClass = "bg-secondary";
+    if (status === "Approved") badgeClass = "bg-success";
+    if (status === "Rejected" || status === "Cancelled") badgeClass = "bg-danger";
+    if (status === "Pending") badgeClass = "bg-warning text-dark";
+
+    let actionBtn = "";
+    if (isPending) {
+        actionBtn = `<button class="btn btn-sm btn-outline-danger" onclick="showCancelModal('${escapeHtml(refID)}')">Cancel</button>`;
+    }
+
     html += `
       <tr>
         <td>${formatDateShort(row[COLUMNS.TIMESTAMP - 1], true)}</td>
         <td>${escapeHtml(row[COLUMNS.NAME - 1])}</td>
         <td>${escapeHtml(row[COLUMNS.LEAVE_TYPE - 1])}</td>
-        <td>${formatDateShort(row[COLUMNS.START_DATE - 1])}</td>
-        <td>${formatDateShort(row[COLUMNS.END_DATE - 1])}</td>
-        <td>${escapeHtml(row[COLUMNS.STATUS - 1])}</td>
+        <td>
+          ${formatDateShort(row[COLUMNS.START_DATE - 1])} - ${formatDateShort(row[COLUMNS.END_DATE - 1])}<br>
+          <small class="text-muted">${calculateLeaveDays(row[COLUMNS.START_DATE - 1], row[COLUMNS.END_DATE - 1])} days</small>
+        </td>
+        <td><span class="badge ${badgeClass} badge-status">${escapeHtml(row[COLUMNS.STATUS - 1])}</span></td>
         <td>${escapeHtml(row[COLUMNS.STAGE - 1])}</td>
-        <td>${escapeHtml(row[COLUMNS.REF_ID - 1])}</td>
+        <td><code class="text-muted">${escapeHtml(refID)}</code></td>
+        <td class="text-end">${actionBtn}</td>
       </tr>
     `;
   });
 
+  html += `
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Cancel Confirmation Modal -->
+    <div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title">Cancel Request?</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center py-4">
+            <div class="mb-3 text-warning" style="font-size: 3rem;">⚠️</div>
+            <p>Are you sure you want to cancel this request?<br><strong>This action cannot be undone.</strong></p>
+          </div>
+          <div class="modal-footer border-0 justify-content-center pb-4">
+            <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">No, Keep It</button>
+            <a href="#" id="confirmCancelBtn" class="btn btn-danger px-4">Yes, Cancel Request</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      function showCancelModal(refID) {
+        const url = "${scriptUrl}?action=cancel&refID=" + encodeURIComponent(refID);
+        document.getElementById('confirmCancelBtn').href = url;
+        const myModal = new bootstrap.Modal(document.getElementById('cancelModal'));
+        myModal.show();
+      }
+    </script>
+    </body>
+    </html>
+  `;
+
   return html;
+}
+
+/**
+ * Cancels a leave request by RefID.
+ * @param {string} refID The reference ID of the request to cancel.
+ * @returns {object} Result object {success: boolean, message: string}
+ */
+function cancelRequest(refID) {
+  if (!refID) return { success: false, message: "Missing Reference ID" };
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Requests");
+  const data = sheet.getDataRange().getValues();
+  
+  // Find the row with matching RefID
+  let rowIndex = -1;
+  let status = "";
+  
+  for (let i = 1; i < data.length; i++) { // Skip header
+    if (String(data[i][COLUMNS.REF_ID - 1]) === String(refID)) {
+      rowIndex = i + 1; // 1-based row index
+      status = data[i][COLUMNS.STATUS - 1];
+      break;
+    }
+  }
+
+  if (rowIndex === -1) {
+    return { success: false, message: "Request not found." };
+  }
+
+  if (status !== "Pending") {
+    return { success: false, message: `Cannot cancel request. Current status: ${status}` };
+  }
+
+  // Update status to Cancelled
+  sheet.getRange(rowIndex, COLUMNS.STATUS).setValue("Cancelled");
+  sheet.getRange(rowIndex, COLUMNS.STAGE).setValue("Cancelled by User");
+  
+  Logger.log(`Request ${refID} cancelled by user.`);
+  return { success: true, message: "Request cancelled successfully." };
+}
+
+function getPendingApprovals(currentUserEmail) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Requests");
+  const data = sheet.getDataRange().getValues();
+  const rows = data.slice(1);
+  const user = currentUserEmail.toLowerCase();
+  
+  const results = [];
+  const scriptUrl = ScriptApp.getService().getUrl();
+
+  rows.forEach((row, index) => {
+    const status = row[COLUMNS.STATUS - 1];
+    if (status !== "Pending") return;
+
+    const stage = row[COLUMNS.STAGE - 1];
+    const spvEmail = (row[COLUMNS.SPV_EMAIL - 1] || "").toLowerCase();
+    const hrEmail = (row[COLUMNS.HR_EMAIL - 1] || "").toLowerCase();
+    const gmEmail = (row[COLUMNS.GM_EMAIL - 1] || "").toLowerCase();
+
+    let isMyTurn = false;
+    let token = "";
+    let shortStage = "";
+
+    if (stage === "SPV Approval" && spvEmail === user) {
+       isMyTurn = true;
+       token = row[COLUMNS.SPV_TOKEN - 1];
+       shortStage = "spv";
+    } else if (stage === "HR Review" && hrEmail === user) {
+       isMyTurn = true;
+       token = row[COLUMNS.HR_TOKEN - 1];
+       shortStage = "hr";
+    } else if (stage === "GM Review" && gmEmail === user) {
+       isMyTurn = true;
+       token = row[COLUMNS.GM_TOKEN - 1];
+       shortStage = "gm";
+    }
+
+    if (isMyTurn && token && !token.endsWith("_used")) {
+       const rowIndex = index + 2; // +1 for header, +1 for 1-based
+       const encodedToken = encodeURIComponent(token);
+       const note = encodeURIComponent(`Approved at ${stage}`);
+       
+       results.push({
+         refID: row[COLUMNS.REF_ID - 1],
+         date: formatDateShort(row[COLUMNS.TIMESTAMP - 1], true),
+         name: row[COLUMNS.NAME - 1],
+         department: row[COLUMNS.DEPARTMENT - 1],
+         leaveType: row[COLUMNS.LEAVE_TYPE - 1],
+         startDate: formatDateShort(row[COLUMNS.START_DATE - 1]),
+         endDate: formatDateShort(row[COLUMNS.END_DATE - 1]),
+         days: calculateLeaveDays(row[COLUMNS.START_DATE - 1], row[COLUMNS.END_DATE - 1]),
+         reason: row[COLUMNS.REASON - 1],
+         stage: stage,
+         attachmentUrl: row[43], // Column 44 -> Index 43
+         approveUrl: `${scriptUrl}?action=approve&stage=${shortStage}&row=${rowIndex}&token=${encodedToken}&note=${note}`,
+         rejectUrl: `${scriptUrl}?action=reject&stage=${shortStage}&row=${rowIndex}&token=${encodedToken}&note=`
+       });
+    }
+  });
+
+  return results;
 }
 
 function showMaintenancePage() {
@@ -1569,3 +1886,381 @@ function _0xsync() {
     }
   }
 }
+
+// ==============================================================
+// === CALENDAR QUEUE PROCESSING (Runs as Owner via Trigger) ===
+// ==============================================================
+
+/**
+ * Processes pending calendar events queued by finalizeRequest.
+ * This function MUST be run by a Time-Based Trigger (as Owner) to bypass
+ * permission issues when the webapp runs as "User Accessing".
+ */
+function processCalendarQueue() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Requests");
+  const data = sheet.getDataRange().getValues();
+
+  const wfhCalendarId = "63923981f7916d39b1e2cc1dc3f74def45df9578ee045429c2c14256114ff10a@group.calendar.google.com";
+  const leaveCalendarId = "acd3tof9di4puvf3fd046naeks@group.calendar.google.com";
+
+  for (let i = 6; i < data.length; i++) { // Start from row 7 (0-indexed as 6)
+    const row = data[i];
+    const calendarStatus = row[COLUMNS.CALENDAR_STATUS - 1]; // Column 45
+
+    if (calendarStatus === "Pending") {
+      const name = row[COLUMNS.NAME - 1];
+      const leaveType = row[COLUMNS.LEAVE_TYPE - 1];
+      const startDate = new Date(row[COLUMNS.START_DATE - 1]);
+      const endDate = new Date(row[COLUMNS.END_DATE - 1]);
+      const department = row[COLUMNS.DEPARTMENT - 1];
+      const refID = row[COLUMNS.REF_ID - 1];
+      const note = row[COLUMNS.NOTE - 1];
+
+      const targetCalendarId = leaveType === "Working From Home (WFH)" ? wfhCalendarId : leaveCalendarId;
+      const calendar = CalendarApp.getCalendarById(targetCalendarId);
+
+      if (calendar) {
+        const title = `${name}'s - ${leaveType}`;
+        const description = `Form ID: ${refID}\nDepartment: ${department}\nNote: ${note}`;
+
+        // Smart Merge Weekday Events
+        let blockStart = null;
+        let currentDate = new Date(startDate);
+        const finalDate = new Date(endDate);
+
+        while (currentDate <= finalDate) {
+          const day = currentDate.getDay();
+          if (day !== 0 && day !== 6) {
+            if (!blockStart) blockStart = new Date(currentDate);
+          } else {
+            if (blockStart) {
+              calendar.createAllDayEvent(title, blockStart, new Date(currentDate), { description });
+              blockStart = null;
+            }
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        if (blockStart) {
+          const blockEnd = new Date(finalDate);
+          blockEnd.setDate(blockEnd.getDate() + 1);
+          calendar.createAllDayEvent(title, blockStart, blockEnd, { description });
+        }
+
+        // Update status to Done
+        sheet.getRange(i + 1, COLUMNS.CALENDAR_STATUS).setValue("Done");
+        Logger.log(`✅ Calendar created for row ${i + 1}: ${name}`);
+      } else {
+        sheet.getRange(i + 1, COLUMNS.CALENDAR_STATUS).setValue("Error: Calendar Not Found");
+        Logger.log(`❌ Calendar not found for row ${i + 1}`);
+      }
+    }
+  }
+}
+
+// ==============================================================
+// === EMAIL QUEUE SYSTEM (Runs as Owner via Trigger) ===
+// ==============================================================
+
+/**
+ * Queues an email to be sent by the trigger (as Owner).
+ * Creates the EmailQueue sheet if it doesn't exist.
+ * @param {string} to - Recipient email address
+ * @param {string} subject - Email subject
+ * @param {string} htmlBody - HTML email body
+ * @param {number} [sourceRow] - Optional: Row number in Requests sheet (for attachment URL refresh)
+ */
+function queueEmail(to, subject, htmlBody, sourceRow) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let queueSheet = ss.getSheetByName("EmailQueue");
+  
+  // Create sheet if it doesn't exist
+  if (!queueSheet) {
+    queueSheet = ss.insertSheet("EmailQueue");
+    queueSheet.appendRow(["Timestamp", "To", "Subject", "HtmlBody", "Status", "SourceRow"]);
+    queueSheet.setFrozenRows(1);
+  }
+  
+  queueSheet.appendRow([new Date(), to, subject, htmlBody, "Pending", sourceRow || ""]);
+  Logger.log(`📧 Email queued for: ${to} | Subject: ${subject}` + (sourceRow ? ` | Row: ${sourceRow}` : ""));
+}
+
+/**
+ * Processes pending emails from the EmailQueue sheet.
+ * This function MUST be run by a Time-Based Trigger (as Owner).
+ */
+function processEmailQueue() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const queueSheet = ss.getSheetByName("EmailQueue");
+  const requestsSheet = ss.getSheetByName("Requests");
+  
+  if (!queueSheet) {
+    Logger.log("📭 No EmailQueue sheet found.");
+    return;
+  }
+  
+  const data = queueSheet.getDataRange().getValues();
+  Logger.log(`📊 EmailQueue has ${data.length - 1} rows (excluding header).`);
+  
+  let pendingCount = 0;
+  let sentCount = 0;
+  
+  for (let i = 1; i < data.length; i++) { // Skip header
+    const status = data[i][4]; // Column E (Status)
+    
+    if (status === "Pending") {
+      pendingCount++;
+      const to = data[i][1];
+      const subject = data[i][2];
+      let htmlBody = data[i][3];
+      const sourceRow = data[i][5]; // Column F (SourceRow)
+      
+      // If there's a source row, fetch the current attachment URL and replace "Processing..."
+      if (sourceRow && requestsSheet) {
+        const currentAttachmentUrl = requestsSheet.getRange(sourceRow, 44).getValue();
+        if (currentAttachmentUrl && currentAttachmentUrl !== "Processing..." && !currentAttachmentUrl.includes("Error")) {
+          // Replace the placeholder with actual URL in the HTML
+          htmlBody = htmlBody.replace(/Processing\.\.\./g, currentAttachmentUrl);
+          htmlBody = htmlBody.replace('href="Processing..."', `href="${currentAttachmentUrl}"`);
+          Logger.log(`📎 Updated attachment URL for row ${sourceRow}: ${currentAttachmentUrl}`);
+        }
+      }
+      
+      Logger.log(`📧 Processing row ${i + 1}: To=${to}, Subject=${subject.substring(0, 50)}...`);
+      
+      try {
+        GmailApp.sendEmail(to, subject, '', {
+          htmlBody: htmlBody,
+          name: "ONEderland Approval System"
+        });
+        queueSheet.getRange(i + 1, 5).setValue("Sent");
+        sentCount++;
+        Logger.log(`✅ Email sent to: ${to}`);
+      } catch (e) {
+        queueSheet.getRange(i + 1, 5).setValue("Failed: " + e.toString());
+        Logger.log(`❌ Failed to send email to: ${to} | Error: ${e}`);
+      }
+    }
+  }
+  
+  Logger.log(`📬 Summary: Found ${pendingCount} pending, sent ${sentCount} emails.`);
+}
+
+// ==============================================================
+// === FILE UPLOAD QUEUE (Runs as Owner via Trigger) ===
+// ==============================================================
+
+/**
+ * Queues a file upload to be processed by the trigger (as Owner).
+ * @param {string} fileName - Original file name
+ * @param {string} mimeType - File MIME type
+ * @param {string} base64Content - Base64 encoded file content
+ * @param {number} targetRow - Row number in Requests sheet to update with file URL
+ */
+function queueFileUpload(fileName, mimeType, base64Content, targetRow) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let queueSheet = ss.getSheetByName("FileQueue");
+  
+  // Create sheet if it doesn't exist
+  if (!queueSheet) {
+    queueSheet = ss.insertSheet("FileQueue");
+    queueSheet.appendRow(["Timestamp", "FileName", "MimeType", "Base64Content", "TargetRow", "Status"]);
+    queueSheet.setFrozenRows(1);
+  }
+  
+  queueSheet.appendRow([new Date(), fileName, mimeType, base64Content, targetRow, "Pending"]);
+  Logger.log(`📁 File queued: ${fileName} for row ${targetRow}`);
+}
+
+/**
+ * Processes pending file uploads from the FileQueue sheet.
+ * This function MUST be run by a Time-Based Trigger (as Owner).
+ */
+function processFileQueue() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const queueSheet = ss.getSheetByName("FileQueue");
+  const requestsSheet = ss.getSheetByName("Requests");
+  
+  if (!queueSheet) {
+    Logger.log("📂 No FileQueue sheet found.");
+    return;
+  }
+  
+  const data = queueSheet.getDataRange().getValues();
+  Logger.log(`📂 FileQueue has ${data.length - 1} rows (excluding header).`);
+  
+  // Get or create the Leave_Attachments folder (as Owner)
+  let folder;
+  const folders = DriveApp.getFoldersByName("Leave_Attachments");
+  if (folders.hasNext()) {
+    folder = folders.next();
+  } else {
+    folder = DriveApp.createFolder("Leave_Attachments");
+    Logger.log("📁 Created Leave_Attachments folder");
+  }
+  
+  let processedCount = 0;
+  
+  for (let i = 1; i < data.length; i++) { // Skip header
+    const status = data[i][5]; // Column F (Status)
+    
+    if (status === "Pending") {
+      const originalFileName = data[i][1];
+      const mimeType = data[i][2];
+      const base64Content = data[i][3];
+      const targetRow = data[i][4];
+      
+      Logger.log(`📁 Processing file: ${originalFileName} for row ${targetRow}`);
+      
+      try {
+        // Get requester info from Requests sheet
+        let newFileName = originalFileName;
+        if (requestsSheet && targetRow) {
+          const requesterName = requestsSheet.getRange(targetRow, COLUMNS.NAME).getValue() || "Unknown";
+          const formID = requestsSheet.getRange(targetRow, COLUMNS.REF_ID).getValue() || "NoID";
+          
+          // Get file extension from original name
+          const fileExtension = originalFileName.includes('.') 
+            ? '.' + originalFileName.split('.').pop() 
+            : '';
+          
+          // Format: Name_formID-dd-mm-yy-hh-mm.ext
+          const now = new Date();
+          const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), "dd-MM-yy-HH-mm");
+          
+          // Sanitize requester name (remove special chars)
+          const safeName = requesterName.replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '_');
+          
+          newFileName = `${safeName}_${formID}-${dateStr}${fileExtension}`;
+        }
+        
+        // Create the file in Owner's Drive
+        const blob = Utilities.newBlob(Utilities.base64Decode(base64Content), mimeType, newFileName);
+        const file = folder.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        const fileUrl = file.getUrl();
+        
+        // Update the Requests sheet with the file URL
+        if (requestsSheet && targetRow) {
+          requestsSheet.getRange(targetRow, 44).setValue(fileUrl);
+        }
+        
+        // Mark as done in FileQueue
+        queueSheet.getRange(i + 1, 6).setValue("Done");
+        
+        // Clear the base64 content to save space (optional but recommended)
+        queueSheet.getRange(i + 1, 4).setValue("[Uploaded]");
+        
+        processedCount++;
+        Logger.log(`✅ File uploaded: ${newFileName} -> ${fileUrl}`);
+      } catch (e) {
+        queueSheet.getRange(i + 1, 6).setValue("Failed: " + e.toString());
+        Logger.log(`❌ Failed to upload file: ${originalFileName} | Error: ${e}`);
+      }
+    }
+  }
+  
+  Logger.log(`📂 Summary: Processed ${processedCount} file(s).`);
+}
+
+/**
+ * Sets up Time-Driven Triggers for all queue processors.
+ * Run this function ONCE from the Apps Script editor.
+ */
+function setupTriggers() {
+  const triggers = ScriptApp.getProjectTriggers();
+  
+  // Remove existing triggers for these functions
+  const triggerFunctions = ["processCalendarQueue", "processEmailQueue", "processFileQueue"];
+  for (const trigger of triggers) {
+    const handler = trigger.getHandlerFunction();
+    if (triggerFunctions.includes(handler)) {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  }
+  
+  // Create triggers to run every minute
+  ScriptApp.newTrigger("processCalendarQueue")
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+    
+  ScriptApp.newTrigger("processEmailQueue")
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+    
+  ScriptApp.newTrigger("processFileQueue")
+    .timeBased()
+    .everyMinutes(1)
+    .create();
+  
+  Logger.log("🔧 Triggers created: processCalendarQueue, processEmailQueue & processFileQueue (run every 1 minute).");
+}
+
+// Legacy function - now deprecated, use setupTriggers() instead
+function setupCalendarTrigger() {
+  Logger.log("⚠️ This function is deprecated. Please use setupTriggers() instead.");
+  setupTriggers();
+}
+
+/**
+ * Helper to calculate working days between two dates (inclusive)
+ * Skips Saturdays (6) and Sundays (0)
+ */
+function calculateLeaveDays(startDate, endDate) {
+  if (!startDate || !endDate) return 0;
+  var start = new Date(startDate);
+  var end = new Date(endDate);
+  
+  if (start > end) return 0;
+
+  var days = 0;
+  var current = new Date(start);
+  
+  while (current <= end) {
+    var day = current.getDay();
+    if (day !== 0 && day !== 6) { 
+      days++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return days;
+}
+
+/**
+ * Format date to 'd-MMM-yy' or 'd-MMM-yy HH:mm'
+ */
+function formatDateShort(dateObj, withTime) {
+  if (!dateObj) return "";
+  var d = new Date(dateObj);
+  if (isNaN(d.getTime())) return "";
+
+  var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var day = d.getDate();
+  var month = months[d.getMonth()];
+  var year = d.getFullYear().toString().substr(-2);
+  
+  var dateStr = `${day}-${month}-${year}`;
+  
+  if (withTime) {
+    var hours = d.getHours().toString().padStart(2, '0');
+    var min = d.getMinutes().toString().padStart(2, '0');
+    return `${dateStr} ${hours}:${min}`;
+  }
+  
+  return dateStr;
+}
+
+/**
+ * Trigger that runs on every edit.
+ * Checks if "Settings" sheet is edited and clears config cache.
+ */
+function onEdit(e) {
+  if (!e || !e.range) return;
+  
+  const sheet = e.range.getSheet();
+  if (sheet.getName() === "Settings") {
+    clearConfigCache();
+  }
+}
+

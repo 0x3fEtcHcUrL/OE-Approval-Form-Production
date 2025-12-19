@@ -1,41 +1,6 @@
 #!/bin/bash
 
-# Spinner function
-spinner() {
-  local pid=$1
-  local delay=0.15
-  local spin='|/-\'
-  while kill -0 $pid 2>/dev/null; do
-    for i in $(seq 0 3); do
-      echo -ne "\r${2} ${spin:$i:1}"
-      sleep $delay
-    done
-  done
-  echo -ne "\r${2} ✅\n"
-}
-
+echo "✅ Disabling maintenance mode..."
 sudo docker exec -it leave-app rm -f /var/www/html/down/down.flag
-
-echo "✅ Access Granted..."
-sleep 1
-echo "🔧 Re-routed network begin in..."
-sleep 1
-for i in 3 2 1; do
-  echo "🔧 $i"
-  sleep 1
-done
-
-# Disable maintenance mode with spinner
-(echo && sleep 3) &
-spinner $! "🔧 Disabling maintenance mode"
-
 echo "🟢 Maintenance mode disabled."
-sleep 1
-echo "🌍 Your website is live again!"
-sleep 1
-
-# Closing sequence
-for msg in "✅ Closing Terminal..." "✅ ...." "✅ ..." "✅ .." "✅ Byee Byeee..."; do
-  echo "$msg"
-  sleep 1
-done
+echo "Your website is live again!"

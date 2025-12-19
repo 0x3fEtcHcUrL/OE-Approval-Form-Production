@@ -11,3 +11,7 @@ sudo docker build -t leave-app-system .
 
 ###### Run newest docker update ######
 sudo docker run -d -p 8553:80 --name leave-app leave-app-system
+
+###### How to publish maintenance site ######
+Maintenance Active = ./down.sh
+Maintenance Done   = ./up.sh

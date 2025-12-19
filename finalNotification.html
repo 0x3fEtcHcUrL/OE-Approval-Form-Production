@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <!--
+  <!--
     Creator: Galbatorix
     Created for ONEderland Leave Request System
     If you need support, improvements, or bug fixes, please contact the creator.
@@ -11,26 +12,58 @@
   -->
   <base target="_top">
   <style>
-    body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
-    .card {
-      max-width: 700px; margin: auto; background-color: #fff;
-      border: 1px solid #ddd; border-radius: 8px;
-      padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 20px;
     }
-    .header { text-align: center; color: #2c3e50; margin-bottom: 20px; }
-    .footer { margin-top: 20px; font-size: 0.9em; color: #777; text-align: center; }
-    .approved { color: green; font-weight: bold; }
-    .rejected { color: red; font-weight: bold; }
+
+    .card {
+      max-width: 700px;
+      margin: auto;
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+
+    .footer {
+      margin-top: 20px;
+      font-size: 0.9em;
+      color: #777;
+      text-align: center;
+    }
+
+    .approved {
+      color: green;
+      font-weight: bold;
+    }
+
+    .rejected {
+      color: red;
+      font-weight: bold;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 15px;
     }
+
     td {
       padding: 10px;
       border: 1px solid #ddd;
       vertical-align: top;
     }
+
     td.label {
       width: 30%;
       background-color: #f9f9f9;
@@ -39,46 +72,75 @@
     }
   </style>
 </head>
+
 <body>
   <div class="card">
     <h2 class="header">Leave/WFH Notifications</h2>
 
     <div class="section">
-      <p>Hi <strong><?= name ?></strong>,</p>
+      <p>Hi <strong>
+          <?= name ?>
+        </strong>,</p>
       <p>Your Leave/WFH request has been processed. Below are the final decisions:</p>
     </div>
 
     <table>
       <tr>
         <td class="label">Form ID</td>
-        <td><?= refID ?></td>
+        <td>
+          <?= refID ?>
+        </td>
       </tr>
       <tr>
         <td class="label">Leave Type</td>
-        <td><?= leaveType ?></td>
+        <td>
+          <?= leaveType ?>
+        </td>
       </tr>
       <tr>
         <td class="label">Dates</td>
-        <td><?= startDate ?> to <?= endDate ?> (<?= totalDays ?> days)</td>
+        <td>
+          <?= startDate ?> to
+          <?= endDate ?> (
+          <?= totalDays ?> days)
+        </td>
       </tr>
       <tr>
         <td class="label">Reason</td>
-        <td><?= reason ?></td>
+        <td>
+          <?= reason ?>
+        </td>
       </tr>
+      <? if (attachmentUrl) { ?>
+      <tr>
+        <td class="label">Attachment</td>
+        <td>
+          <a href="<?= attachmentUrl ?>" target="_blank">View Document</a>
+        </td>
+      </tr>
+      <? } ?>
       <tr>
         <td class="label">Final Decision</td>
-        <td><span class="<?= finalDecision == 'Approved' ? 'approved' : 'rejected' ?>"><?= finalDecision ?></span></td>
+        <td><span class="<?= finalDecision == 'Approved' ? 'approved' : 'rejected' ?>">
+            <?= finalDecision ?>
+          </span></td>
       </tr>
       <tr>
         <td class="label">Final Note</td>
-        <td><?= finalNote ?></td>
+        <td>
+          <?= finalNote ?>
+        </td>
       </tr>
       <? if (updatedBalance) { ?>
       <tr>
         <td class="label">Updated Leave Balance</td>
         <td>
-          Annual Leave: <strong><?= updatedBalance.leave ?></strong><br>
-          Sick Leave: <strong><?= updatedBalance.sick ?></strong>
+          Annual Leave: <strong>
+            <?= updatedBalance.leave ?>
+          </strong><br>
+          Sick Leave: <strong>
+            <?= updatedBalance.sick ?>
+          </strong>
         </td>
       </tr>
       <? } ?>
@@ -88,24 +150,31 @@
     <table>
       <tr>
         <td class="label">SPV Note</td>
-        <td><span class="<?= spvStatus == 'Approved' ? 'approved' : 'rejected' ?>"><?= spvStatus ?></span></td>
+        <td><span class="<?= spvStatus == 'Approved' ? 'approved' : 'rejected' ?>">
+            <?= spvStatus ?>
+          </span></td>
       </tr>
       <tr>
         <td class="label">HR Note</td>
-        <td><span class="<?= hrStatus == 'Approved' ? 'approved' : 'rejected' ?>"><?= hrStatus ?></span></td>
+        <td><span class="<?= hrStatus == 'Approved' ? 'approved' : 'rejected' ?>">
+            <?= hrStatus ?>
+          </span></td>
       </tr>
       <? if (gmStatus) { ?>
       <tr>
         <td class="label">GM Note</td>
-        <td><span class="<?= gmStatus == 'Approved' ? 'approved' : 'rejected' ?>"><?= gmStatus ?></span></td>
+        <td><span class="<?= gmStatus == 'Approved' ? 'approved' : 'rejected' ?>">
+            <?= gmStatus ?>
+          </span></td>
       </tr>
       <? } ?>
     </table>
-   
+
 
     <div class="footer">
       <p>Thank you for using the ONEderland Leave System.</p>
     </div>
   </div>
 </body>
+
 </html>
