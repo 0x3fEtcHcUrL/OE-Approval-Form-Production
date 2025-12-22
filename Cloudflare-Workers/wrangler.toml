@@ -1,0 +1,9 @@
+name = "oe-approval-form"
+main = "src/index.js"
+compatibility_date = "2023-12-01"
+
+[site]
+bucket = "."
+
+[vars]
+MAINTENANCE_MODE = "false"
