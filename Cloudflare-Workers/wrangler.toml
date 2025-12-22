@@ -1,9 +1,10 @@
 name = "oe-approval-form"
 main = "src/index.js"
-compatibility_date = "2023-12-01"
+compatibility_date = "2024-12-01"
 
-[site]
-bucket = "."
+[assets]
+directory = "./public"
+binding = "ASSETS"
 
 [vars]
 MAINTENANCE_MODE = "false"
