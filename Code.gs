@@ -152,14 +152,22 @@ const COLUMNS = {
   SPV_TOKEN: 20,      // Column T
   HR_TOKEN: 21,       // Column U
   GM_TOKEN: 22,       // Column V
-  EMP_EMAIL: 23,      // Column W
-  ANNUAL_BALANCE: 24, // Column X
-  SICK_BALANCE: 25,    // Column Y
-  // BEREA_BALANCE: 26     // Column Z
-  // MARRIAGE_BALANCE: 27  // Column AA
-  // MATERNITY_BALANCE: 28 // Column AB
-  REF_ID: 43,
-  CALENDAR_STATUS: 45 // Column AS (New for Calendar Queue)
+  // --- Compacted Columns (Moved from AQ-AS to W-Y) ---
+  REF_ID: 23,          // Column W (Was 43)
+  ATTACHMENT_URL: 24,  // Column X (Was 44)
+  CALENDAR_STATUS: 25, // Column Y (Was 45)
+  // --- Removed/Moved to EmployeeMaster ---
+  // EMP_EMAIL (W), ANNUAL_BALANCE (X), SICK_BALANCE (Y) are now in EmployeeMaster
+};
+
+// Column indices for EmployeeMaster Sheet
+const MASTER_COLUMNS = {
+  EMAIL: 1,           // Column A
+  ANNUAL_BALANCE: 2,  // Column B
+  SICK_BALANCE: 3,    // Column C
+  BEREA_BALANCE: 4,   // Column D
+  MARRIAGE_BALANCE: 5,// Column E
+  MATERNITY_BALANCE: 6// Column F
 };
 
 /**
@@ -615,25 +623,15 @@ function doGet(e) {
       sheet.getRange(rowIndex, COLUMNS.DECISION_DATE).setValue(new Date());
 
       // === Start Balance Validation Logic ===
-      // Dynamically load leave balance data
-      const balanceStartRow = 7;
-      const balanceData = sheet.getRange(
-        balanceStartRow,
-        COLUMNS.EMP_EMAIL, // column W (23)
-        sheet.getLastRow() - (balanceStartRow - 1),
-        COLUMNS.SICK_BALANCE - COLUMNS.EMP_EMAIL + 1 // should be 3 columns (W to Y)
-      ).getValues();
-
+      // Fetch balance from EmployeeMaster using the helper function
       const requesterEmail = requester.toLowerCase();
+      const employeeBalanceData = getEmployeeBalance(requesterEmail);
+      
       let balance = 0;
       let sickBalance = 0;
-
-      for (const row of balanceData) {
-        if ((row[0] || "").toLowerCase() === requesterEmail) {
-          balance = parseFloat(row[1]) || 0;
-          sickBalance = parseFloat(row[2]) || 0;
-          break;
-        }
+      if (employeeBalanceData) {
+        balance = employeeBalanceData.annual;
+        sickBalance = employeeBalanceData.sick;
       }
 
       // const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
@@ -1465,33 +1463,51 @@ function getLeaveBalanceByEmail(email) {
     throw new Error("Invalid email passed to getLeaveBalanceByEmail");
   }
 
-  const sheet = SpreadsheetApp.getActive().getSheetByName("Requests");
-  const data = sheet.getDataRange().getValues();
-
-  // normalize input email
   const inputEmail = normalizeGmailAddress(email);
 
-  for (let i = 1; i < data.length; i++) {
-    const rowEmailRaw = data[i][COLUMNS.EMP_EMAIL - 1];
-    if (!rowEmailRaw) continue;
-
-    // normalize sheet email
-    const rowEmail = normalizeGmailAddress(rowEmailRaw);
-
-    if (rowEmail === inputEmail) {
-      const leaveBalance = parseFloat(data[i][COLUMNS.ANNUAL_BALANCE - 1]) || 0;
-      const sickBalance = parseFloat(data[i][COLUMNS.SICK_BALANCE - 1]) || 0;
-
-      Logger.log("[INFO] Found balance for %s: Leave = %s, Sick = %s", inputEmail, leaveBalance, sickBalance);
-
-      return {
-        leave: leaveBalance,
-        sick: sickBalance
-      };
-    }
+  // Use the new helper to get balance from EmployeeMaster
+  const balance = getEmployeeBalance(inputEmail);
+  
+  if (balance) {
+    Logger.log("[INFO] Found balance for %s: Leave = %s, Sick = %s", inputEmail, balance.annual, balance.sick);
+    return {
+      leave: balance.annual,
+      sick: balance.sick
+    };
   }
 
   Logger.log("[WARN] No balance found for email: %s", inputEmail);
+  return null;
+}
+
+/**
+ * Helper to fetch employee balance from EmployeeMaster sheet.
+ * @param {string} email - The employee email to look up.
+ * @returns {object|null} - { annual: number, sick: number } or null if not found.
+ */
+function getEmployeeBalance(email) {
+  if (!email) return null;
+  const normalizedInput = normalizeGmailAddress(email);
+  
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const masterSheet = ss.getSheetByName("EmployeeMaster");
+  
+  if (!masterSheet) {
+    Logger.log("❌ Error: EmployeeMaster sheet not found!");
+    return null;
+  }
+  
+  const data = masterSheet.getDataRange().getValues();
+  // Skip 2 header rows (starting loop from 2)
+  for (let i = 2; i < data.length; i++) {
+    const rowEmail = normalizeGmailAddress(data[i][MASTER_COLUMNS.EMAIL - 1]);
+    if (rowEmail === normalizedInput) {
+      return {
+        annual: parseFloat(data[i][MASTER_COLUMNS.ANNUAL_BALANCE - 1]) || 0,
+        sick: parseFloat(data[i][MASTER_COLUMNS.SICK_BALANCE - 1]) || 0
+      };
+    }
+  }
   return null;
 }
 
@@ -1521,25 +1537,17 @@ function performAutoReject(rowIndex, balance, balanceType, days, name, leaveType
   sheet.getRange(rowIndex, COLUMNS.STAGE).setValue("Completed");
   sheet.getRange(rowIndex, COLUMNS.NOTE).setValue(rejectionNote);
 
-  // Fetch current leave balances from "Request" sheet (W: email, X: leave, Y: sick)
-  const balanceSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
-  const balanceStartRow = 7;
-  const balanceRange = balanceSheet.getRange(balanceStartRow, COLUMNS.EMP_EMAIL, balanceSheet.getLastRow() - (balanceStartRow - 1), 3).getValues();
-
+  // Fetch current leave balances from EmployeeMaster
   let currentLeave = 0, currentSick = 0;
-  const requesterLower = requester.toLowerCase();
-  for (const [email, leaveBal, sickBal] of balanceRange) {
-    if (email && email.toLowerCase() === requesterLower) {
-      currentLeave = parseFloat(leaveBal) || 0;
-      currentSick = parseFloat(sickBal) || 0;
-      break;
-    }
+  const employeeBalance = getEmployeeBalance(requester);
+  if (employeeBalance) {
+      currentLeave = employeeBalance.annual;
+      currentSick = employeeBalance.sick;
   }
 
   // Fetch RefID from sheet
-  // Fetch RefID from sheet
   const refID = sheet.getRange(rowIndex, COLUMNS.REF_ID).getValue();
-  const attachmentUrl = sheet.getRange(rowIndex, 44).getValue(); // Column 44
+  const attachmentUrl = sheet.getRange(rowIndex, COLUMNS.ATTACHMENT_URL).getValue();
 
   // Final rejection email
   const template = HtmlService.createTemplateFromFile('finalNotification');
@@ -1822,7 +1830,7 @@ function getPendingApprovals(currentUserEmail) {
          days: calculateLeaveDays(row[COLUMNS.START_DATE - 1], row[COLUMNS.END_DATE - 1]),
          reason: row[COLUMNS.REASON - 1],
          stage: stage,
-         attachmentUrl: row[43], // Column 44 -> Index 43
+         attachmentUrl: row[COLUMNS.ATTACHMENT_URL - 1],
          approveUrl: `${scriptUrl}?action=approve&stage=${shortStage}&row=${rowIndex}&token=${encodedToken}&note=${note}`,
          rejectUrl: `${scriptUrl}?action=reject&stage=${shortStage}&row=${rowIndex}&token=${encodedToken}&note=`
        });
@@ -2016,7 +2024,7 @@ function processEmailQueue() {
       
       // If there's a source row, fetch the current attachment URL and replace "Processing..."
       if (sourceRow && requestsSheet) {
-        const currentAttachmentUrl = requestsSheet.getRange(sourceRow, 44).getValue();
+        const currentAttachmentUrl = requestsSheet.getRange(sourceRow, COLUMNS.ATTACHMENT_URL).getValue();
         if (currentAttachmentUrl && currentAttachmentUrl !== "Processing..." && !currentAttachmentUrl.includes("Error")) {
           // Replace the placeholder with actual URL in the HTML
           htmlBody = htmlBody.replace(/Processing\.\.\./g, currentAttachmentUrl);
@@ -2141,7 +2149,7 @@ function processFileQueue() {
         
         // Update the Requests sheet with the file URL
         if (requestsSheet && targetRow) {
-          requestsSheet.getRange(targetRow, 44).setValue(fileUrl);
+          requestsSheet.getRange(targetRow, COLUMNS.ATTACHMENT_URL).setValue(fileUrl);
         }
         
         // Mark as done in FileQueue
