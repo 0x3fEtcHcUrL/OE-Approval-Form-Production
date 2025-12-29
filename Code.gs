@@ -188,6 +188,22 @@ function getProfileName() {
   return null;
 }
 
+/**
+ * Fetches the current user's profile photo URL from Google People API.
+ * @returns {string|null} The profile photo URL or null if not available.
+ */
+function getProfilePhoto() {
+  try {
+    const people = People.People.get('people/me', { personFields: 'photos' });
+    if (people.photos && people.photos.length > 0) {
+      return people.photos[0].url;
+    }
+  } catch (e) {
+    console.warn("Failed to fetch profile photo via People API: " + e.toString());
+  }
+  return null;
+}
+
 function getCurrentUser() {
   const cache = CacheService.getUserCache();
   const props = PropertiesService.getUserProperties();
@@ -291,10 +307,19 @@ function showErrorTokenPage(title, message) {
 }
 
 function doGet(e) {
-
+  const activeUserEmail = Session.getActiveUser().getEmail().toLowerCase();
+  
+  // Maintenance Mode Check - Allow TEST_EMAIL to bypass for testing
   if (CONFIG.MAINTENANCE_MODE) {
-    Logger.log("Maintenance mode active — showing maintenance page.");
-    return showMaintenancePage();
+    const testEmail = (CONFIG.TEST_EMAIL || "").toLowerCase();
+    const isTestUser = testEmail && activeUserEmail === testEmail;
+    
+    if (!isTestUser) {
+      Logger.log(`Maintenance mode active — blocking user: ${activeUserEmail}`);
+      return showMaintenancePage();
+    }
+    
+    Logger.log(`⚠️ Maintenance mode active — TEST USER BYPASS: ${activeUserEmail}`);
   }
 
   const page = e?.parameter?.page;
@@ -319,8 +344,10 @@ function doGet(e) {
   if (page === 'dashboard') {
     const user = Session.getActiveUser().getEmail();
     const pendingRequests = getPendingApprovals(user);
+    const userPhoto = getProfilePhoto(); // Fetch user's profile photo
     const template = HtmlService.createTemplateFromFile('dashboard');
     template.userEmail = user;
+    template.userPhoto = userPhoto; // Pass photo URL to template
     template.requests = pendingRequests;
     return template.evaluate().setTitle("Approver Dashboard");
   }
@@ -738,10 +765,16 @@ function doGet(e) {
             const allSpvEmails = Object.values(CONFIG.SPV_MAP);
             const isRequesterSPV = allSpvEmails.includes(requester);
             const isRequesterHR = requester.toLowerCase() === CONFIG.HR_EMAIL.toLowerCase();
-            const needsGM = (leaveType === "Unpaid Leave") || isRequesterSPV;
+            // Only "Unpaid Leave - FT" (Full-Time) needs GM approval
+            // "Unpaid Leave - ITN" (Intern) ends at HR
+            const leaveTypeTrimmed = (leaveType || "").trim();
+            const isUnpaidFT = leaveTypeTrimmed === "Unpaid Leave - FT";
+            const needsGM = isUnpaidFT || isRequesterSPV;
 
             Logger.log(`Requester: ${requester}`);
-            Logger.log(`Leave Type: ${leaveType}`);
+            Logger.log(`Leave Type (raw): "${leaveType}"`);
+            Logger.log(`Leave Type (trimmed): "${leaveTypeTrimmed}"`);
+            Logger.log(`Is Unpaid FT? ${isUnpaidFT}`);
             Logger.log(`Is Requester SPV? ${isRequesterSPV}`);
             Logger.log(`Is Requester HR? ${isRequesterHR}`);
             Logger.log(`Needs GM? ${needsGM}`);
@@ -1152,7 +1185,7 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
   const hrStatus = sheet.getRange(row, COLUMNS.HR_DECISION).getValue() || '';
   const gmStatus = sheet.getRange(row, COLUMNS.GM_DECISION).getValue() || '';
   const department = sheet.getRange(row, COLUMNS.DEPARTMENT).getValue();
-  const attachmentUrl = sheet.getRange(row, 44).getValue(); // Column 44 is attachment URL
+  const attachmentUrl = sheet.getRange(row, COLUMNS.ATTACHMENT_URL).getValue();
   const days = calculateLeaveDays(startDate, endDate);
 
   const leaveTypes = {
@@ -1160,47 +1193,64 @@ function finalizeRequest(row, decision, note, name, requesterEmail, finalApprova
     sick: ["Sick Leave"]
   };
 
-  const balanceStartRow = 7;
-  const balanceRange = sheet.getRange(balanceStartRow, COLUMNS.EMP_EMAIL, sheet.getLastRow() - (balanceStartRow - 1), 3).getValues();
+  // Fetch balance from EmployeeMaster using helper function
   const requester = requesterEmail.toLowerCase();
+  const employeeBalance = getEmployeeBalance(requester);
   let currentLeave = 0, currentSick = 0, updatedBalance = null;
 
-  for (let i = 0; i < balanceRange.length; i++) {
-    const [email, leaveBal, sickBal] = balanceRange[i];
-    if (!email) continue;
+  if (employeeBalance) {
+    currentLeave = employeeBalance.annual;
+    currentSick = employeeBalance.sick;
 
-    if (email.toLowerCase() === requester) {
-      currentLeave = parseFloat(leaveBal) || 0;
-      currentSick = parseFloat(sickBal) || 0;
+    if (decision === "Approved") {
+      const isAnnual = leaveTypes.annual.includes(leaveType);
+      const isSick = leaveTypes.sick.includes(leaveType);
 
-      if (decision === "Approved") {
-        const isAnnual = leaveTypes.annual.includes(leaveType);
-        const isSick = leaveTypes.sick.includes(leaveType);
-
-        if (isAnnual && days > currentLeave) {
-          performAutoReject(row, currentLeave, "Annual", days, name, leaveType, startDate, endDate, reason, requesterEmail, spvStatus, hrStatus, gmStatus, refID);
-          return;
-        }
-
-        if (isSick && days > currentSick) {
-          performAutoReject(row, currentSick, "Sick", days, name, leaveType, startDate, endDate, reason, requesterEmail, spvStatus, hrStatus, gmStatus, refID);
-          return;
-        }
-
-        const rowOffset = balanceStartRow + i;
-        if (isAnnual) {
-          const newLeave = Math.max(0, currentLeave - days);
-          sheet.getRange(rowOffset, COLUMNS.ANNUAL_BALANCE).setValue(newLeave);
-          updatedBalance = { leave: newLeave, sick: currentSick };
-        } else if (isSick) {
-          const newSick = Math.max(0, currentSick - days);
-          sheet.getRange(rowOffset, COLUMNS.SICK_BALANCE).setValue(newSick);
-          updatedBalance = { leave: currentLeave, sick: newSick };
-        }
+      // Check if balance is sufficient
+      if (isAnnual && days > currentLeave) {
+        performAutoReject(row, currentLeave, "Annual", days, name, leaveType, startDate, endDate, reason, requesterEmail, spvStatus, hrStatus, gmStatus, refID);
+        return;
       }
 
-      break;
+      if (isSick && days > currentSick) {
+        performAutoReject(row, currentSick, "Sick", days, name, leaveType, startDate, endDate, reason, requesterEmail, spvStatus, hrStatus, gmStatus, refID);
+        return;
+      }
+
+      // Update balance in EmployeeMaster sheet
+      if (isAnnual || isSick) {
+        const ss = SpreadsheetApp.getActiveSpreadsheet();
+        const masterSheet = ss.getSheetByName("EmployeeMaster");
+        
+        if (masterSheet) {
+          const masterData = masterSheet.getDataRange().getValues();
+          // Find the employee row in EmployeeMaster (skip 2 header rows)
+          for (let i = 2; i < masterData.length; i++) {
+            const rowEmail = normalizeGmailAddress(masterData[i][MASTER_COLUMNS.EMAIL - 1]);
+            if (rowEmail === normalizeGmailAddress(requester)) {
+              const masterRow = i + 1; // Convert to 1-based row index
+              
+              if (isAnnual) {
+                const newLeave = Math.max(0, currentLeave - days);
+                masterSheet.getRange(masterRow, MASTER_COLUMNS.ANNUAL_BALANCE).setValue(newLeave);
+                updatedBalance = { leave: newLeave, sick: currentSick };
+                Logger.log(`✅ Updated Annual Balance for ${requester}: ${currentLeave} -> ${newLeave}`);
+              } else if (isSick) {
+                const newSick = Math.max(0, currentSick - days);
+                masterSheet.getRange(masterRow, MASTER_COLUMNS.SICK_BALANCE).setValue(newSick);
+                updatedBalance = { leave: currentLeave, sick: newSick };
+                Logger.log(`✅ Updated Sick Balance for ${requester}: ${currentSick} -> ${newSick}`);
+              }
+              break;
+            }
+          }
+        } else {
+          Logger.log("❌ EmployeeMaster sheet not found for balance update!");
+        }
+      }
     }
+  } else {
+    Logger.log(`⚠️ No balance record found for ${requester} in EmployeeMaster`);
   }
 
   // Update final approval status
