@@ -1,58 +1,114 @@
-# 📋 Leave Request System
+# 📋 ONEderland Leave Request System
 
-A fully automated **Google Apps Script-based Leave Request System** with multi-stage approvals.
+A fully automated **Google Apps Script-based Leave Request System** with multi-stage approvals, real-time notifications, and a modern user interface.
 
 ---
 
 ## ✨ Features
 
-- 📝 Google Form frontend with enhanced UX
-- 📆 Integration with Google Calendar (Add to calendar for reporting team)
-- 🔄 Multi-stage approval workflow: **SPV → HR → GM (optional)**
-- 📧 Dynamic email notifications with styled Bootstrap-based HTML templates
-- 📨 Final decision notifications sent to requester and reporting team
-- 📊 Google Sheet-powered backend for easy tracking and management
-- 🔄 Easily customizable and extendable
+### Core Functionality
+- 📝 Modern Google Form frontend with responsive design
+- 📆 Automatic Google Calendar integration for approved leaves
+- 🔄 Multi-stage approval workflow: **SPV → HR → GM (conditional)**
+- 📧 Beautiful Bootstrap-styled HTML email templates
+- 📊 Google Sheet-powered backend for tracking and management
 
----
+### Leave Types Supported
+- Annual Leave (Full-day & Half-day)
+- Sick Leave (with Medical Certificate upload)
+- Bereavement Leave
+- Marriage Leave
+- Maternity Leave
+- Working From Home (WFH)
+- Unpaid Leave
 
-## 📅 Coming Soon
-- ✅ Unique one-time tokens per approval link
-- ❌ Prevents multiple approvals or external tampering
-- 🚫 Displays a styled error message if token is missing, invalid, or already used
+### Advanced Features
+- ✅ **One-time Token Security** — Prevents duplicate actions or link tampering
+- 📋 **Multi-Leave Submission** — Submit multiple leave types in one request
+- 🕐 **Half-Day Support** — Clear "0.5 (Half-Day)" display across all views
+- 📊 **Approver Dashboard** — View and action pending requests with user avatars
+- ❌ **Reject with Notes** — Add rejection reasons for clarity
+- 📅 **Automatic Calendar Events** — Approved leaves auto-added to company calendar
 
 ---
 
 ## 🚀 Tech Stack
 
 - [Google Apps Script](https://developers.google.com/apps-script)
-- Google Sheets
+- Google Sheets (Backend database)
 - Google Workspace (Gmail, Calendar)
-- HTML + Bootstrap (Email + UI Styling)
+- HTML + Bootstrap 5 (Email & UI templates)
 - JavaScript (Client-side interaction)
 
 ---
 
-## 🚀 How to Run This Project
+## 📁 Project Structure
 
-Follow the steps below to set everything up:
+| File | Description |
+|------|-------------|
+| `Code.gs` | Main backend logic (approvals, notifications, data handling) |
+| `form.html` | Leave request submission form |
+| `dashboard.html` | Approver dashboard to review pending requests |
+| `emailtemplate.html` | Approval notification email template |
+| `finalNotification.html` | Final decision email template (approved/rejected) |
+| `result.html` | Action confirmation page |
+| `tracking.html` | Request tracking page for employees |
+| `errorToken.html` | Token validation error page |
+| `accessDenied.html` | Unauthorized access page |
+| `cancelResult.html` | Request cancellation result page |
+| `processingError.html` | Generic error page |
+| `reportingEmail.html` | Reporting team notification email |
+| `rejectWithNotes.html` | Rejection notes input page |
+| `terms.html` | Terms of service page |
+| `maintenance.html` | Maintenance mode page |
 
-1. **Create a new Google Sheet**.
-2. **Rename the first sheet** to `Request`  
-   > This sheet will serve as the backend for processing requests.
-3. **(Optional)** Create additional sheets for dashboards or analytics — feel free to customize them to fit your needs.
-4. **Open the Apps Script editor**  
-   Go to `Extensions` → `Apps Script`.
-5. **Add all script files except `index.html`** to your Apps Script project.
-6. **Deploy your project** using the Apps Script deployment options.
+---
+
+## 🚀 Setup Instructions
+
+1. **Create a new Google Sheet**
+2. **Rename the first sheet** to `Requests`
+3. **Create a `Settings` sheet** with configuration (SPV emails, HR email, GM email, etc.)
+4. **Open Apps Script editor**: `Extensions` → `Apps Script`
+5. **Copy all `.gs` and `.html` files** into your Apps Script project
+6. **Enable required APIs** in Apps Script:
+   - People API (for profile names/photos)
+   - Calendar API (for event creation)
+7. **Deploy as Web App**:
+   - Execute as: `User accessing the web app`
+   - Access: `Anyone` (or restrict as needed)
 
 ---
 
-## ❓ Why is `index.html` not included in Apps Script?
+## 🔒 Security Features
 
-- The `index.html` file is used **only for the landing page**, hosted separately.
-- This approach helps ensure proper **domain ownership verification** for Google Cloud Platform (GCP).
-- Once verified, your GCP app can be associated securely with your custom domain.
-- You can read more about GCP domain verification via [Google’s documentation](https://support.google.com/cloud/answer/9110914).
+- **One-time approval tokens** — Each approval link is unique and expires after use
+- **Email validation** — Only authorized users can view their own requests
+- **Token expiration** — Used tokens are invalidated immediately
+- **Secure error handling** — Graceful error pages without exposing internals
 
 ---
+
+## 📦 Recent Updates (v4.1)
+
+- ✅ Half-day leave display with explicit "(Half-Day)" indicator
+- ✅ Requester profile photos on dashboard (with fallback avatars)
+- ✅ Extracted HTML templates for easier maintenance
+- ✅ Bootstrap modals for professional alerts
+- ✅ Standardized message formatting across all notifications
+- ✅ Mobile-responsive dashboard and forms
+- ✅ Cleaned up logging for production readiness
+
+---
+
+## 📝 License
+
+This project is proprietary to **ONEderland Enterprise**. Contact the maintainer for usage permissions.
+
+---
+
+## 👨‍💻 Maintainers
+
+- **Iyyan Anugrah** (Creator)
+
+For support, please contact the IT team.

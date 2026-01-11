@@ -33,7 +33,7 @@
       <h4>Reject Leave Request with Notes</h4>
     </div>
     <div class="card-body">
-      <form id="rejectForm">
+      <form id="rejectForm" onsubmit="event.preventDefault(); submitNote();">
         <div class="mb-3">
           <label for="note" class="form-label">Rejection Note</label>
           <textarea class="form-control" id="note" rows="4" required
@@ -41,8 +41,9 @@
         </div>
         <input type="hidden" id="row" value="<?= row ?>" />
         <input type="hidden" id="stage" value="<?= stage ?>" />
+        <input type="hidden" id="token" value="<?= token ?>" />
         <div class="d-flex justify-content-between">
-          <a class="btn btn-secondary" href="https://mail.google.com/">Cancel</a>
+          <button type="button" class="btn btn-secondary" onclick="window.close()">Cancel</button>
           <button type="submit" class="btn btn-danger">Submit Rejection</button>
         </div>
       </form>
@@ -56,10 +57,14 @@
         alert("Please enter a note before submitting.");
         return;
       }
-      const row = "<?= row ?>";
-      const stage = "<?= stage ?>";
-      const baseUrl = "<?= ScriptApp.getService().getUrl() ?>";
-      const finalUrl = `${baseUrl}?action=reject&stage=${encodeURIComponent(stage)}&row=${row}&note=${encodeURIComponent(note)}`;
+      const row = document.getElementById('row').value;
+      const stage = document.getElementById('stage').value;
+      const token = document.getElementById('token').value;
+
+      // Use current page URL as base to avoid cross-deployment access errors
+      const currentBaseUrl = window.location.href.split('?')[0];
+      const finalUrl = `${currentBaseUrl}?action=reject&stage=${encodeURIComponent(stage)}&row=${row}&token=${encodeURIComponent(token)}&note=${encodeURIComponent(note)}`;
+
       window.location.href = finalUrl;
     }
   </script>

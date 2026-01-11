@@ -100,9 +100,9 @@
       <tr>
         <td class="label">Dates</td>
         <td>
-          <?= startDate ?> to
+          <?= startDate ?> ->
           <?= endDate ?> (
-          <?= totalDays ?> days)
+          <?= (totalDays == 0.5 || totalDays == "0.5") ? totalDays + " days (Half-Day)" : totalDays + " days" ?>)
         </td>
       </tr>
       <tr>
@@ -133,14 +133,38 @@
       </tr>
       <? if (updatedBalance) { ?>
       <tr>
-        <td class="label">Updated Leave Balance</td>
+        <td class="label">Balance Updates</td>
         <td>
-          Annual Leave: <strong>
-            <?= updatedBalance.leave ?>
-          </strong><br>
-          Sick Leave: <strong>
-            <?= updatedBalance.sick ?>
-          </strong>
+          <? if (updatedBalance.annual) { ?>
+          <div>Annual Leave: <strong>
+              <?= updatedBalance.annual ?>
+            </strong></div>
+          <? } ?>
+          <? if (updatedBalance.sick) { ?>
+          <div>Sick Leave: <strong>
+              <?= updatedBalance.sick ?>
+            </strong></div>
+          <? } ?>
+          <? if (updatedBalance.bereavement) { ?>
+          <div>Bereavement: <strong>
+              <?= updatedBalance.bereavement ?>
+            </strong></div>
+          <? } ?>
+          <? if (updatedBalance.marriage) { ?>
+          <div>Marriage: <strong>
+              <?= updatedBalance.marriage ?>
+            </strong></div>
+          <? } ?>
+          <? if (updatedBalance.maternity) { ?>
+          <div>Maternity: <strong>
+              <?= updatedBalance.maternity ?>
+            </strong></div>
+          <? } ?>
+          <? if (updatedBalance.unpaid) { ?>
+          <div>Unpaid Leave: <strong>
+              <?= updatedBalance.unpaid ?>
+            </strong></div>
+          <? } ?>
         </td>
       </tr>
       <? } ?>
