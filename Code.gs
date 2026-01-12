@@ -229,8 +229,14 @@ function generateReferenceID() {
 function parseDMYDate(dateString) {
   if (!dateString || typeof dateString !== 'string') return null;
   const parts = dateString.split("-");
+
+  // Handle YYYY-MM-DD (ISO 8601) sent by HTML5 date inputs
+  if (parts.length === 3 && parts[0].length === 4) {
+     return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  }
+
+  // Handle DD-MM-YYYY (Legacy/Sheet format)
   if (parts.length === 3) {
-    // new Date(year, monthIndex, day)
     return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
   }
   return null;
@@ -353,7 +359,7 @@ function showErrorTokenPage(title, message) {
   template.title = title;
   template.message = message;
   template.baseUrl = ScriptApp.getService().getUrl();
-  
+
   Logger.log(`Error Page Rendered for ${currentUserEmail} - ${title}`);
   return template.evaluate().setTitle(title);
 }
@@ -659,7 +665,7 @@ function doGet(e) {
       // const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
       let days = storedDuration;
       if (storedDuration !== 0.5 && storedDuration !== "0.5") {
-          days = calculateLeaveDays(new Date(startDate), new Date(endDate));
+        days = calculateLeaveDays(new Date(startDate), new Date(endDate));
       }
       // const leaveTypeLower = leaveType.toLowerCase();
 
@@ -1061,7 +1067,7 @@ function processSingleLeaveRequest(sheet, name, email, department, leaveType, st
   if (duration === 0.5 || duration === "0.5") {
     days = 0.5;
   } else {
-    days = calculateLeaveDays(startDate, endDate);
+    days = calculateLeaveDays(firstDate, lastDate);
   }
 
   // Append Row
@@ -1100,17 +1106,6 @@ function processSingleLeaveRequest(sheet, name, email, department, leaveType, st
   // It probably recalculates strings. 
   sendSubmissionConfirmation(email, name, leaveType, firstDate, lastDate, reason, stage, refID, attachmentUrl, lastRow);
   sendApprovalEmail(name, leaveType, firstDate, lastDate, reason, approvalEmail, stage, lastRow, tokenToUse, refID, attachmentUrl, email, days);
-
-  sendGCPNotification(
-    `<b>New Request Submitted</b>\n\n` +
-    `<b>Form ID:</b> ${refID}\n` +
-    `<b>Name:</b> ${name}\n` +
-    `<b>Email:</b> ${email}\n` +
-    `<b>Date:</b> ${formatDate(firstDate)} - ${formatDate(lastDate)} (${days} days)\n` +
-    `<b>Decision:</b> Pending (${stage})\n` +
-    `<b>Doc:</b> ${attachmentUrl && attachmentUrl !== "Processing..." ? "Yes" : "No"}\n` +
-    `<b>Reason:</b> ${reason}`
-  );
 }
 
 function escapeHtml(text) {
